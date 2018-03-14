@@ -125,10 +125,7 @@ namespace ClientWatcher
         {
             byte[] byteFile = tryToReadFile(_syncFolder + "\\" + fileName);
             HttpContent fileContent = new ByteArrayContent(byteFile);
-
-            //fileContent.Headers.ContentDisposition = new ContentDispositionHeaderValue("attachment");
-            //fileContent.Headers.ContentDisposition.FileName = fileName;
-
+            
             using (var client = new HttpClient())
             {
                 client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
@@ -172,10 +169,10 @@ namespace ClientWatcher
             return b;
         }
 
-        private async void OnWatcherChanged(object source, FileSystemEventArgs e)
+        private void OnWatcherChanged(object source, FileSystemEventArgs e)
         {
             if (!fileExists(e.Name, "").Result)
-                await sendFile(e.Name);
+                Task.WaitAll(sendFile(e.Name));
         }
 
         private string calculateMD5(string file)

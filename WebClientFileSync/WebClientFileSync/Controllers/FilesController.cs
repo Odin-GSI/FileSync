@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Threading.Tasks;
 using System.Web;
 using System.Web.Mvc;
 using WebClientFileSync.Models;
@@ -45,9 +46,10 @@ namespace WebClientFileSync.Controllers
                 string fileName = httpFile.FileName.Split('\\').Last();
 
                 //Upload to WebApi
-                sendFile(fileBytes, fileName);
-
-                TempData["Message"] = "Upload successful.";
+                if(sendFile(fileBytes, fileName).Result)
+                    TempData["Message"] = "Upload successful.";
+                else
+                    TempData["Message"] = "Upload unsuccessful.";
             }
             else
                 TempData["Message"] = "No file selected.";
@@ -55,23 +57,20 @@ namespace WebClientFileSync.Controllers
             return RedirectToAction("List");
         }
 
-        private bool sendFile(byte[] file,string fileName)
+        private async Task<bool> sendFile(byte[] file,string fileName)
         {
             HttpContent fileContent = new ByteArrayContent(file);
 
-            fileContent.Headers.ContentDisposition = new ContentDispositionHeaderValue("attachment");
-            fileContent.Headers.ContentDisposition.FileName = fileName;
-
             using (var client = new HttpClient())
             {
-                using (var formData = new MultipartFormDataContent())
+                client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                var response = await client.PostAsync(_webApiURLtoLoad, new MultipartFormDataContent()
                 {
-                    formData.Add(fileContent, "file", "fileName");
+                    { new StringContent(fileName),"fileName"},
+                    { fileContent, "file", fileName }
+                });
 
-                    var response = client.PostAsync(_webApiURLtoLoad, formData).Result;
-
-                    return response.IsSuccessStatusCode;
-                }
+                return response.IsSuccessStatusCode;
             }
         }
     }
