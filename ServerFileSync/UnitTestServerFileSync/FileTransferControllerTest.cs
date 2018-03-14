@@ -4,7 +4,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace UnitTestServerFileSync
 {
     [TestClass]
-    public class UnitTest1
+    public class FileTransferControllerTest
     {
         [TestMethod]
         public void TestMethod1()
