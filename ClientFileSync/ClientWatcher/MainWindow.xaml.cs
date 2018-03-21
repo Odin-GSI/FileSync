@@ -30,13 +30,15 @@ namespace ClientWatcher
     {
         private string _syncFolder = ConfigurationManager.AppSettings["SyncFolder"].ToString();
         private string _webApiURLtoLoad = ConfigurationManager.AppSettings["WepApiURLtoLoad"].ToString();
+        private string _webApiURLtoOverwrite = ConfigurationManager.AppSettings["WepApiURLtoOverwrite"].ToString();
+        private string _webApiURLtoDelete = ConfigurationManager.AppSettings["WepApiURLtoDelete"].ToString();
+        private string _wepApiURLtoDeletePartial = ConfigurationManager.AppSettings["WepApiURLtoDeletePartial"].ToString();
         private string _wepApiURLtoDownload = ConfigurationManager.AppSettings["WepApiURLtoDownload"].ToString();
         private string _wepApiURLExistsFile = ConfigurationManager.AppSettings["WepApiURLExistsFile"].ToString();
+        private string _singalRHost = ConfigurationManager.AppSettings["SignalRHost"].ToString();
         FileSystemWatcher _watcher;
 
         public System.Threading.Thread Thread { get; set; }
-        //public string Host = "http://localhost:53349/";
-        public string Host = "http://localhost/ServerFileSync/";
         public IHubProxy Proxy { get; set; }
         public HubConnection Connection { get; set; }
         public bool Active { get; set; }
@@ -46,12 +48,13 @@ namespace ClientWatcher
             Active = true;
             Thread = new System.Threading.Thread(() =>
             {
-                Connection = new HubConnection(Host);
+                Connection = new HubConnection(_singalRHost);
                 Connection.Error += Connection_Error;
                 Connection.StateChanged += Connection_StateChanged;
                 Proxy = Connection.CreateHubProxy("FileSyncHub");
 
-                Proxy.On<string, string>("NewFileNotification", (fileName, CRC) => OnNewFileNotified(fileName,CRC));
+                Proxy.On<string, string>("NewFileNotification", (fileName, CRC) => OnNewFileNotified(fileName, CRC));//
+                Proxy.On<string>("DeleteFileNotification", (fileName) => OnDeleteFileNotified(fileName));
 
                 Connection.Start();
 
@@ -64,10 +67,17 @@ namespace ClientWatcher
             Thread.Start();
         }
 
+        private void OnDeleteFileNotified(string fileName)
+        {
+            var fullPath = _syncFolder + "\\" + fileName;
+            if (File.Exists(fullPath))
+                File.Delete(fullPath);
+        }
+
         private void OnNewFileNotified(string fileName, string CRC)
         {
             //Check if I have the File
-            if(!alreadyHaveFile(fileName, CRC))
+            if (!alreadyHaveFile(fileName, CRC))
                 //Download the New File
                 getFile(fileName);
         }
@@ -75,13 +85,11 @@ namespace ClientWatcher
         private void Connection_StateChanged(StateChange obj)
         {
             Dispatcher.Invoke(() => infoLabel.Content = "Status: " + obj.NewState);
-            //MessageBox.Show("State: " + obj.NewState);
         }
 
         private void Connection_Error(Exception obj)
         {
             Dispatcher.Invoke(() => infoLabel.Content = "Connection error: " + obj.ToString());
-            //MessageBox.Show("Connection error: " + obj.ToString());
         }
 
         public MainWindow()
@@ -90,9 +98,11 @@ namespace ClientWatcher
 
             _watcher = new FileSystemWatcher();
             _watcher.Path = _syncFolder;
-            _watcher.NotifyFilter = NotifyFilters.LastWrite;
+            //_watcher.NotifyFilter = NotifyFilters.LastWrite;
             _watcher.Filter = "*.*";
-            _watcher.Changed += new FileSystemEventHandler(OnWatcherChanged);
+            //_watcher.Changed += new FileSystemEventHandler(OnWatcherChanged);
+            _watcher.Deleted += new FileSystemEventHandler(onWatcherDeleted);
+            _watcher.Created += new FileSystemEventHandler(onWatcherCreated);
             _watcher.EnableRaisingEvents = true;
         }
 
@@ -103,18 +113,21 @@ namespace ClientWatcher
             sendFile(filename);
         }
 
-        private bool alreadyHaveFile(string fileName,string CRC)
+        private bool alreadyHaveFile(string fileName, string CRC)
         {
             //Include CRC check ************************************************************************** TO DO
             return File.Exists(_syncFolder + "\\" + fileName);
         }
 
+        string _downloadedFile = "";
         private async void getFile(string fileName)
         {
+            _downloadedFile = fileName;
+
             using (var client = new HttpClient())
             {
-                var responseStream = await client.GetStreamAsync(_wepApiURLtoDownload +"?fileName="+ fileName);
-                using (var fileWritter = File.Create(_syncFolder+"\\"+fileName))
+                var responseStream = await client.GetStreamAsync(_wepApiURLtoDownload + "?fileName=" + fileName);
+                using (var fileWritter = File.Create(_syncFolder + "\\" + fileName))
                 {
                     //responseStream.Seek(0, SeekOrigin.Begin);
                     responseStream.CopyTo(fileWritter);
@@ -125,7 +138,7 @@ namespace ClientWatcher
         {
             byte[] byteFile = tryToReadFile(_syncFolder + "\\" + fileName);
             HttpContent fileContent = new ByteArrayContent(byteFile);
-            
+
             using (var client = new HttpClient())
             {
                 client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
@@ -134,10 +147,20 @@ namespace ClientWatcher
                     { new StringContent(fileName),"fileName"},
                     { fileContent, "file", fileName }
                 });
+                if (response.StatusCode == System.Net.HttpStatusCode.Ambiguous)
+                    if (MessageBox.Show("File already exists in server. Do you want to overwrite it?", "Confirmation", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+                    {
+                        //client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                        var overwriteResponse = await client.PostAsync(_webApiURLtoOverwrite, new StringContent(fileName));
+                    }
+                    else
+                    {
+                        var deletePartialResponse = await client.DeleteAsync(_wepApiURLtoDeletePartial + "?fileName="+fileName);
+                    }
             }
         }
 
-        private async Task<bool> fileExists(string fileName, string CRC)
+        private async Task<bool> fileExistsOnServer(string fileName, string CRC)
         {
             bool final;
             using (var client = new HttpClient())
@@ -153,7 +176,7 @@ namespace ClientWatcher
         private byte[] tryToReadFile(string file, int tries = 0)
         {
             if (tries == 100)
-                throw new Exception("Can't access file "+file);
+                throw new Exception("Can't access file " + file);
 
             byte[] b;
             try
@@ -169,12 +192,47 @@ namespace ClientWatcher
             return b;
         }
 
-        private void OnWatcherChanged(object source, FileSystemEventArgs e)
+        //Not being called ATM
+        private void onWatcherChanged(object source, FileSystemEventArgs e)
         {
-            if (!fileExists(e.Name, "").Result)
+            if (!fileExistsOnServer(e.Name, "").Result)
                 Task.WaitAll(sendFile(e.Name));
         }
 
+        private void onWatcherCreated(object source, FileSystemEventArgs e)
+        {
+            if (_downloadedFile!="")
+                if (_downloadedFile == e.Name)
+                {
+                    _downloadedFile = "";
+                    return;
+                }
+            //if (!fileExistsOnServer(e.Name, "").Result)
+            Task.WaitAll(sendFile(e.Name));
+        }
+
+        private void onWatcherDeleted(object source, FileSystemEventArgs e)
+        {
+            Task.WaitAll(deleteFileOnServer(e.Name));
+        }
+
+        private async Task deleteFileOnServer(string fileName)
+        {
+            var lastDotIndex = fileName.LastIndexOf('.');
+            var nameLength = lastDotIndex >= 0 ? lastDotIndex : fileName.Length;
+            var extensionLength = fileName.Length - 1 - nameLength;
+            var name = fileName.Substring(0, nameLength);
+
+            string extension;
+            if (lastDotIndex != - 1)
+                extension = fileName.Substring(lastDotIndex + 1, extensionLength);
+            else
+                extension = "";
+            using (var client = new HttpClient())
+            {
+                var response = await client.DeleteAsync(_webApiURLtoDelete + "?filename=" + name + "&extension=" + extension);
+            }
+        }
         private string calculateMD5(string file)
         {
             using (var md5 = MD5.Create())

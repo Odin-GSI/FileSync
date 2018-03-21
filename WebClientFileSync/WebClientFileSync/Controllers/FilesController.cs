@@ -16,6 +16,7 @@ namespace WebClientFileSync.Controllers
     {
         private string _serverSyncFolder = @"C:\SyncFolders\ServerFolder";
         private string _webApiURLtoLoad = "http://localhost/ServerFileSync/api/FileTransfer/Upload";
+        //private string _webApiURLtoLoad = "http://localhost:52051/api/FileTransfer/Upload";
 
         [HttpGet]
         public ActionResult List()
@@ -46,7 +47,7 @@ namespace WebClientFileSync.Controllers
                 string fileName = httpFile.FileName.Split('\\').Last();
 
                 //Upload to WebApi
-                if(sendFile(fileBytes, fileName).Result)
+                if(sendFile(fileBytes, fileName))
                     TempData["Message"] = "Upload successful.";
                 else
                     TempData["Message"] = "Upload unsuccessful.";
@@ -57,20 +58,20 @@ namespace WebClientFileSync.Controllers
             return RedirectToAction("List");
         }
 
-        private async Task<bool> sendFile(byte[] file,string fileName)
+        private bool sendFile(byte[] file,string fileName)
         {
             HttpContent fileContent = new ByteArrayContent(file);
 
             using (var client = new HttpClient())
             {
                 client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-                var response = await client.PostAsync(_webApiURLtoLoad, new MultipartFormDataContent()
+                var response = client.PostAsync(_webApiURLtoLoad, new MultipartFormDataContent()
                 {
                     { new StringContent(fileName),"fileName"},
                     { fileContent, "file", fileName }
                 });
 
-                return response.IsSuccessStatusCode;
+                return response.Result.IsSuccessStatusCode;
             }
         }
     }

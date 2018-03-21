@@ -14,6 +14,11 @@ namespace ServerFileSync
             // Web API routes
             config.MapHttpAttributeRoutes();
 
+            //config.Routes.MapHttpRoute(
+            //    name: "DeleteMethod",
+            //    routeTemplate: "api/{controller}/{filename}/{extension}",
+            //    defaults: new { extension = RouteParameter.Optional }
+            //);
             config.Routes.MapHttpRoute(
                 name: "DefaultApi",
                 routeTemplate: "api/{controller}/{action}/{id}",

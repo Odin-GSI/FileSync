@@ -14,5 +14,6 @@ namespace ServerFileSync
     public interface IFileSyncClient
     {
         void NewFileNotification(string filename, string CRC);
+        void DeleteFileNotification(string filename);
     }
 }

@@ -7,12 +7,16 @@ using System.Threading.Tasks;
 
 namespace ServerFileSync.Interfaces
 {
-    interface IFileManager
+    public interface IFileManager
     {
         void Save(string uri, byte[] file);
 
         FileStream GetStream(string uri);
 
         bool Exists(string uri);
+
+        void Delete(string uri);
+
+        void Move(string sourceName, string destinyName);
     }
 }
