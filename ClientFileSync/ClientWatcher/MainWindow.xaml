@@ -11,5 +11,9 @@
     <Grid>
         <Button x:Name="btnSendTest" Height="40" Width="60" Click="btnSendTest_Click" Visibility="Hidden">Send File</Button>
         <Label x:Name="infoLabel" Margin="10,10,0,0" HorizontalAlignment="Left" Width="284" Height="28" VerticalAlignment="Top" />
+        <StackPanel Orientation="Horizontal" Margin="10,10,0,0">
+            <Button x:Name="SelectFolder" Height="32" Width="80" Click="SelectFolder_Click">Select Folder</Button>
+            <Label x:Name="CurrentFolder" Margin="10,10,0,0" HorizontalAlignment="Left" Width="284" Height="28" VerticalAlignment="Center" />
+        </StackPanel>
     </Grid>
 </Window>

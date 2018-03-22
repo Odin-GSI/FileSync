@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNet.SignalR.Client;
+using Microsoft.AspNet.SignalR.Client;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -12,6 +12,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Forms;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Documents;
@@ -95,9 +96,21 @@ namespace ClientWatcher
         public MainWindow()
         {
             InitializeComponent();
+            startWatcher();
+        }
 
+        private void startWatcher()
+        {
+            if(_watcher!= null)
+            {
+                _watcher.Deleted -= new FileSystemEventHandler(onWatcherDeleted);
+                _watcher.Created -= new FileSystemEventHandler(onWatcherCreated);
+                _watcher.Dispose();
+                _watcher = null;
+            }
             _watcher = new FileSystemWatcher();
             _watcher.Path = _syncFolder;
+            CurrentFolder.Content = _syncFolder;
             //_watcher.NotifyFilter = NotifyFilters.LastWrite;
             _watcher.Filter = "*.*";
             //_watcher.Changed += new FileSystemEventHandler(OnWatcherChanged);
@@ -148,7 +161,7 @@ namespace ClientWatcher
                     { fileContent, "file", fileName }
                 });
                 if (response.StatusCode == System.Net.HttpStatusCode.Ambiguous)
-                    if (MessageBox.Show("File already exists in server. Do you want to overwrite it?", "Confirmation", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+                    if (System.Windows.MessageBox.Show("File already exists in server. Do you want to overwrite it?", "Confirmation", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
                     {
                         //client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
                         var overwriteResponse = await client.PostAsync(_webApiURLtoOverwrite, new StringContent(fileName));
@@ -241,6 +254,19 @@ namespace ClientWatcher
                 {
                     var hash = md5.ComputeHash(stream);
                     return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+                }
+            }
+        }
+
+        private void SelectFolder_Click(object sender, RoutedEventArgs e)
+        {
+            using (var dialog = new FolderBrowserDialog())
+            {
+                var result = dialog.ShowDialog();
+                if(result == System.Windows.Forms.DialogResult.OK)
+                {
+                    _syncFolder = dialog.SelectedPath;
+                    startWatcher();
                 }
             }
         }

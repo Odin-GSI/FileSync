@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -15,7 +16,8 @@ namespace WebClientFileSync.Controllers
     public class FilesController : Controller
     {
         private string _serverSyncFolder = @"C:\SyncFolders\ServerFolder";
-        private string _webApiURLtoLoad = "http://localhost/ServerFileSync/api/FileTransfer/Upload";
+        private string _webApiURLtoLoad = ConfigurationManager.AppSettings["SignalRHubURL"].ToString() + "/api/FileTransfer/Upload";
+        //private string _webApiURLtoLoad = "http://localhost/ServerFileSync/api/FileTransfer/Upload";
         //private string _webApiURLtoLoad = "http://localhost:52051/api/FileTransfer/Upload";
 
         [HttpGet]
