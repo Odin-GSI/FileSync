@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Web;
 
 namespace ServerFileSync
@@ -20,10 +21,17 @@ namespace ServerFileSync
 
         public string FilePath { get => _filePath; set => _filePath = value; }
 
-        public void Delete(string uri)
+        public void Delete(string fileName)
         {
-            if (File.Exists(_filePath + "\\" + uri))
-                File.Delete(_filePath + "\\" + uri);
+            if (File.Exists(_filePath + "\\" + fileName))
+                File.Delete(_filePath + "\\" + fileName);
+        }
+
+        public void DeleteTemp(string fileName, Guid tempGuid)
+        {
+            string fileNameTemp = getTempFileName(fileName, tempGuid);
+            if (File.Exists(_filePath + "\\" + fileNameTemp))
+                File.Delete(_filePath + "\\" + fileNameTemp);
         }
 
         public bool Exists(string fileName)
@@ -31,23 +39,62 @@ namespace ServerFileSync
             return File.Exists(_filePath + "\\" + fileName);
         }
 
+        public bool ExistsTemp(string fileName, Guid tempGuid)
+        {
+            return File.Exists(_filePath + "\\" + getTempFileName(fileName,tempGuid));
+        }
+
         public FileStream GetStream(string fileName)
         {
             return File.Open(_filePath + "\\" + fileName, FileMode.Open, FileAccess.Read, FileShare.Read);
         }
 
-        public void Save(string fileName, byte[] file)
+        public Guid Save(string fileName, byte[] file, bool asTemp)
         {
-            File.WriteAllBytes(_filePath + "\\" + fileName, file);
+            if (!asTemp)
+            {
+                File.WriteAllBytes(_filePath + "\\" + fileName, file);
+                return new Guid(new String('0',32));
+            }
+            else
+            {
+                Guid tempGuid = Guid.NewGuid();
+                File.WriteAllBytes(_filePath + "\\" + getTempFileName(fileName,tempGuid), file);
+                return tempGuid;
+            }
+        }
+
+        public void ConfirmSave(string fileName, Guid tempGuid)
+        {
+            Move(getTempFileName(fileName,tempGuid),fileName);
         }
 
         public void Move(string sourceName, string destinyName)
         {
             if (this.Exists(sourceName))
             {
-                this.Save(destinyName, File.ReadAllBytes(_filePath + "\\" + sourceName));
+                this.Save(destinyName, File.ReadAllBytes(_filePath + "\\" + sourceName),false);
                 this.Delete(sourceName);
             }
+        }
+
+        public string GetHash(string fileName)
+        {
+            string CRC;
+            using (var md5 = MD5.Create())
+            {
+                using (var stream = GetStream(fileName))
+                {
+                    CRC = BitConverter.ToString(md5.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
+                }
+            }
+
+            return CRC;
+        }
+
+        private string getTempFileName(string fileName, Guid tempGuid)
+        {
+            return fileName + "_Temp_" + tempGuid.ToString();
         }
     }
 }

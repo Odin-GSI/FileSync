@@ -41,14 +41,27 @@ namespace ServerFileSync.Controllers
         }
 
         [HttpPost]
-        public HttpResponseMessage Overwrite()
+        public HttpResponseMessage ConfirmSave(string fileName)
         {
-            var fileName = Request.Content.ReadAsStringAsync().Result;
+            Guid tempGuid;
+            try
+            {
+                string tempGuidstring = Request.Content.ReadAsStringAsync().Result;
+                tempGuid = new Guid(tempGuidstring);
+            }
+            catch
+            {
+                return new HttpResponseMessage(HttpStatusCode.BadRequest);
+            }
+
+            if (!_fileManager.ExistsTemp(fileName,tempGuid))
+                return new HttpResponseMessage(HttpStatusCode.BadRequest);
 
             try
             {
-                _fileManager.Move(getTempFileName(fileName), fileName);
-
+                _fileManager.ConfirmSave(fileName,tempGuid);
+                string CRC = "";// _fileManager.GetHash(fileName);
+                _hubWrapper.NotifyNewFile(fileName, CRC);
                 return new HttpResponseMessage(HttpStatusCode.OK);
             }
             catch (Exception)
@@ -57,12 +70,26 @@ namespace ServerFileSync.Controllers
             }
         }
 
-        [HttpDelete]
-        public HttpResponseMessage DeletePartial(string fileName)
+        [HttpPut]
+        public HttpResponseMessage DeleteTemp(string fileName)
         {
+            Guid tempGuid;
             try
             {
-                _fileManager.Delete(getTempFileName(fileName));
+                string tempGuidstring = Request.Content.ReadAsStringAsync().Result;
+                tempGuid = new Guid(tempGuidstring);
+            }
+            catch
+            {
+                return new HttpResponseMessage(HttpStatusCode.BadRequest);
+            }
+            
+            if (!_fileManager.ExistsTemp(fileName, tempGuid))
+                return new HttpResponseMessage(HttpStatusCode.BadRequest);
+
+            try
+            {
+                _fileManager.DeleteTemp(fileName,tempGuid);
 
                 return new HttpResponseMessage(HttpStatusCode.OK);
             }
@@ -85,27 +112,27 @@ namespace ServerFileSync.Controllers
 
             try
             {
-                string fileName = await GetFileNameFromRequest(multiContents);
+                string fileName = await getStringDataFromRequest(multiContents,0);
+                byte[] fileBytes = await getFileBytesFromRequest(multiContents);
 
-                byte[] fileBytes = await GetFileBytesFromRequest(multiContents);
+                bool existed = _fileManager.Exists(fileName);
 
-                if (_fileManager.Exists(fileName))
+                Guid tempGuid = _fileManager.Save(fileName, fileBytes);
+
+                HttpResponseMessage myResponse = new HttpResponseMessage();
+                myResponse.Content = new StringContent(tempGuid.ToString());
+                myResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("text/plain");
+
+                if (existed)
                 {
-                    _fileManager.Save(getTempFileName(fileName), fileBytes);
-                    return new HttpResponseMessage(HttpStatusCode.Ambiguous);
+                    myResponse.StatusCode = HttpStatusCode.Ambiguous;
                 }
                 else
                 {
-                    _fileManager.Save(fileName, fileBytes);
-
-                    //Calculate CRC
-                    string CRC = getHash(fileName);
-
-                    //Notify New File            
-                    _hubWrapper.NotifyNewFile(fileName, CRC);
-
-                    return new HttpResponseMessage(HttpStatusCode.OK);
+                    myResponse.StatusCode = HttpStatusCode.OK;
                 }
+
+                return myResponse;
             }
             catch (HttpResponseException)
             {
@@ -115,30 +142,6 @@ namespace ServerFileSync.Controllers
             {
                 return new HttpResponseMessage(HttpStatusCode.InternalServerError);
             }
-        }
-
-        private string getHash(string fileName)
-        {
-            string CRC;
-            using (var md5 = MD5.Create())
-            {
-                using (var stream = _fileManager.GetStream(fileName))
-                {
-                    CRC = BitConverter.ToString(md5.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
-                }
-            }
-
-            return CRC;
-        }
-
-        private string getTempFileName(string fileName)
-        {
-            string tempPart = "_partial";
-            var dotIndex = fileName.LastIndexOf('.');
-            if (dotIndex >= 0)
-                return fileName.Insert(dotIndex, tempPart);
-            else
-                return fileName + tempPart;
         }
 
         [HttpDelete]
@@ -154,7 +157,7 @@ namespace ServerFileSync.Controllers
             }
             catch (IOException excp)
             {
-                return new HttpResponseMessage(HttpStatusCode.InternalServerError) { Content = new StringContent("Problems while deleting file. " + excp.Message) };
+                return new HttpResponseMessage(HttpStatusCode.InternalServerError) { Content = new StringContent("There was a problem deleting the file. " + excp.Message) };
             }
             catch (Exception excp)
             {
@@ -162,7 +165,7 @@ namespace ServerFileSync.Controllers
             }
         }
 
-        private async Task<byte[]> GetFileBytesFromRequest(MultipartMemoryStreamProvider multiContents)
+        private async Task<byte[]> getFileBytesFromRequest(MultipartMemoryStreamProvider multiContents)
         {
             byte[] fileBytes;
             if (multiContents.Contents.Count > 1)
@@ -179,14 +182,14 @@ namespace ServerFileSync.Controllers
 
             return fileBytes;
         }
-
-        private async Task<string> GetFileNameFromRequest(MultipartMemoryStreamProvider multiContents)
+        
+        private async Task<string> getStringDataFromRequest(MultipartMemoryStreamProvider multiContents,int position)
         {
             string fileName;
-            if (multiContents.Contents.Count > 0)
+            if (multiContents.Contents.Count > position)
             {
                 //Filename as string content
-                fileName = await multiContents.Contents[0].ReadAsStringAsync();
+                fileName = await multiContents.Contents[position].ReadAsStringAsync();
                 if (String.IsNullOrEmpty(fileName))
                     throw new HttpResponseException(HttpStatusCode.BadRequest);
             }

@@ -17,6 +17,8 @@ namespace WebClientFileSync.Controllers
     {
         private string _serverSyncFolder = @"C:\SyncFolders\ServerFolder";
         private string _webApiURLtoLoad = ConfigurationManager.AppSettings["SignalRHubURL"].ToString() + "/api/FileTransfer/Upload";
+        private string _webApiURLtoDelete = ConfigurationManager.AppSettings["SignalRHubURL"].ToString() + "/api/FileTransfer/Delete";
+        private string _webApiURLtoConfirmSave = ConfigurationManager.AppSettings["SignalRHubURL"].ToString() + "/api/FileTransfer/ConfirmSave";
         //private string _webApiURLtoLoad = "http://localhost/ServerFileSync/api/FileTransfer/Upload";
         //private string _webApiURLtoLoad = "http://localhost:52051/api/FileTransfer/Upload";
 
@@ -60,6 +62,32 @@ namespace WebClientFileSync.Controllers
             return RedirectToAction("List");
         }
 
+        [HttpGet]
+        public ActionResult Delete(string fileName)
+        {
+            string name = fileName;
+            string ext = "";
+
+            int extensionDot = fileName.LastIndexOf('.');
+            if (extensionDot != -1)
+            {
+                name = fileName.Substring(0, extensionDot);
+                ext = fileName.Substring(extensionDot + 1);
+            }
+
+            using (var client = new HttpClient())
+            {
+                var response = client.DeleteAsync(_webApiURLtoDelete+"?filename="+name+"&extension="+ext).Result;
+
+                if (response.StatusCode == HttpStatusCode.OK)
+                    TempData["Message"] = "File deleted.";
+                else
+                    TempData["Message"] = "There was a problem in the server.";
+            }
+
+            return RedirectToAction("List");
+        }
+
         private bool sendFile(byte[] file,string fileName)
         {
             HttpContent fileContent = new ByteArrayContent(file);
@@ -71,9 +99,16 @@ namespace WebClientFileSync.Controllers
                 {
                     { new StringContent(fileName),"fileName"},
                     { fileContent, "file", fileName }
-                });
+                }).Result;
 
-                return response.Result.IsSuccessStatusCode;
+                if (response.IsSuccessStatusCode)
+                {
+                    string tempGuid = response.Content.ReadAsStringAsync().Result;
+                    var overwriteResponse = client.PostAsync(_webApiURLtoConfirmSave + "?fileName=" + fileName, new StringContent(tempGuid));
+                    return overwriteResponse.Result.IsSuccessStatusCode;
+                }
+                else
+                return false;
             }
         }
     }

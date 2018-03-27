@@ -31,9 +31,9 @@ namespace ClientWatcher
     {
         private string _syncFolder = ConfigurationManager.AppSettings["SyncFolder"].ToString();
         private string _webApiURLtoLoad = ConfigurationManager.AppSettings["WepApiURLtoLoad"].ToString();
-        private string _webApiURLtoOverwrite = ConfigurationManager.AppSettings["WepApiURLtoOverwrite"].ToString();
+        private string _webApiURLtoConfirmSave = ConfigurationManager.AppSettings["WepApiURLtoConfirmSave"].ToString();
         private string _webApiURLtoDelete = ConfigurationManager.AppSettings["WepApiURLtoDelete"].ToString();
-        private string _wepApiURLtoDeletePartial = ConfigurationManager.AppSettings["WepApiURLtoDeletePartial"].ToString();
+        private string _wepApiURLtoDeleteTemp = ConfigurationManager.AppSettings["WepApiURLtoDeleteTemp"].ToString();
         private string _wepApiURLtoDownload = ConfigurationManager.AppSettings["WepApiURLtoDownload"].ToString();
         private string _wepApiURLExistsFile = ConfigurationManager.AppSettings["WepApiURLExistsFile"].ToString();
         private string _singalRHost = ConfigurationManager.AppSettings["SignalRHost"].ToString();
@@ -54,7 +54,7 @@ namespace ClientWatcher
                 Connection.StateChanged += Connection_StateChanged;
                 Proxy = Connection.CreateHubProxy("FileSyncHub");
 
-                Proxy.On<string, string>("NewFileNotification", (fileName, CRC) => OnNewFileNotified(fileName, CRC));//
+                Proxy.On<string, string>("NewFileNotification", (fileName, CRC) => OnNewFileNotified(fileName, CRC));
                 Proxy.On<string>("DeleteFileNotification", (fileName) => OnDeleteFileNotified(fileName));
 
                 Connection.Start();
@@ -70,9 +70,13 @@ namespace ClientWatcher
 
         private void OnDeleteFileNotified(string fileName)
         {
-            var fullPath = _syncFolder + "\\" + fileName;
-            if (File.Exists(fullPath))
-                File.Delete(fullPath);
+            if(alreadyHaveFile(fileName,""))
+            if (System.Windows.MessageBox.Show("File "+fileName+" was deleted in the server. Do you want to delete it locally?", "Confirmation", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+            {
+                var fullPath = _syncFolder + "\\" + fileName;
+                if (File.Exists(fullPath))
+                    File.Delete(fullPath);
+            }
         }
 
         private void OnNewFileNotified(string fileName, string CRC)
@@ -160,16 +164,22 @@ namespace ClientWatcher
                     { new StringContent(fileName),"fileName"},
                     { fileContent, "file", fileName }
                 });
+                string tempGuid = response.Content.ReadAsStringAsync().Result;
+                string msgBoxText = "";
                 if (response.StatusCode == System.Net.HttpStatusCode.Ambiguous)
-                    if (System.Windows.MessageBox.Show("File already exists in server. Do you want to overwrite it?", "Confirmation", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
-                    {
-                        //client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-                        var overwriteResponse = await client.PostAsync(_webApiURLtoOverwrite, new StringContent(fileName));
-                    }
-                    else
-                    {
-                        var deletePartialResponse = await client.DeleteAsync(_wepApiURLtoDeletePartial + "?fileName="+fileName);
-                    }
+                    msgBoxText = "File "+fileName+" already exists in server. Do you want to overwrite it?";
+                else
+                    if (response.StatusCode == System.Net.HttpStatusCode.OK)
+                    msgBoxText = "File " + fileName + " does not exists in server. Do you want to add it?";
+                
+                if (System.Windows.MessageBox.Show(msgBoxText, "Confirmation", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+                {
+                    var overwriteResponse = await client.PostAsync(_webApiURLtoConfirmSave + "?fileName=" + fileName, new StringContent(tempGuid));
+                }
+                else
+                {
+                    var deletePartialResponse = await client.PutAsync(_wepApiURLtoDeleteTemp + "?fileName=" + fileName, new StringContent(tempGuid));
+                }
             }
         }
 
@@ -226,7 +236,9 @@ namespace ClientWatcher
 
         private void onWatcherDeleted(object source, FileSystemEventArgs e)
         {
-            Task.WaitAll(deleteFileOnServer(e.Name));
+            if(fileExistsOnServer(e.Name,"").Result)
+                if (System.Windows.MessageBox.Show("File "+e.Name+" exists in server. Do you want to delete it?", "Confirmation", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+                    Task.WaitAll(deleteFileOnServer(e.Name));
         }
 
         private async Task deleteFileOnServer(string fileName)
