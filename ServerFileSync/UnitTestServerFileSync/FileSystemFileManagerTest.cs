@@ -51,9 +51,15 @@ namespace UnitTestServerFileSync
         [TestMethod]
         public void Save_ParamOK_FileCreated()
         {
+            //ARRANGE
             var fileName = "test.txt";
             var file = new byte[] { 1, 2, 3 };
-            fileManager.Save(fileName, file);
+            //Mock<Filesyst
+
+            //ACT
+            fileManager.Save(fileName, file,true);
+
+            //ASSERT
             Assert.IsTrue(File.Exists(folderPath + "\\" + fileName));
         }
 

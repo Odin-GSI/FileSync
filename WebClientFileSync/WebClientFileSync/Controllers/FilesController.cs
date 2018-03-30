@@ -65,19 +65,19 @@ namespace WebClientFileSync.Controllers
         [HttpGet]
         public ActionResult Delete(string fileName)
         {
-            string name = fileName;
-            string ext = "";
+            //string name = fileName;
+            //string ext = "";
 
-            int extensionDot = fileName.LastIndexOf('.');
-            if (extensionDot != -1)
-            {
-                name = fileName.Substring(0, extensionDot);
-                ext = fileName.Substring(extensionDot + 1);
-            }
+            //int extensionDot = fileName.LastIndexOf('.');
+            //if (extensionDot != -1)
+            //{
+            //    name = fileName.Substring(0, extensionDot);
+            //    ext = fileName.Substring(extensionDot + 1);
+            //}
 
             using (var client = new HttpClient())
             {
-                var response = client.DeleteAsync(_webApiURLtoDelete+"?filename="+name+"&extension="+ext).Result;
+                var response = client.DeleteAsync(_webApiURLtoDelete+"?filename="+fileName/*name+"&extension="+ext*/).Result;
 
                 if (response.StatusCode == HttpStatusCode.OK)
                     TempData["Message"] = "File deleted.";
@@ -101,7 +101,7 @@ namespace WebClientFileSync.Controllers
                     { fileContent, "file", fileName }
                 }).Result;
 
-                if (response.IsSuccessStatusCode)
+                if (response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.Ambiguous)
                 {
                     string tempGuid = response.Content.ReadAsStringAsync().Result;
                     var overwriteResponse = client.PostAsync(_webApiURLtoConfirmSave + "?fileName=" + fileName, new StringContent(tempGuid));

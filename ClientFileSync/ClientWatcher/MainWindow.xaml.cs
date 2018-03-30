@@ -37,7 +37,8 @@ namespace ClientWatcher
         private string _wepApiURLtoDownload = ConfigurationManager.AppSettings["WepApiURLtoDownload"].ToString();
         private string _wepApiURLExistsFile = ConfigurationManager.AppSettings["WepApiURLExistsFile"].ToString();
         private string _singalRHost = ConfigurationManager.AppSettings["SignalRHost"].ToString();
-        FileSystemWatcher _watcher;
+        FileSystemWatcher _watcher; //Watcher for Copy and Modify
+        FileSystemWatcher _deleteWatcher; //Watcher for Delete
 
         public System.Threading.Thread Thread { get; set; }
         public IHubProxy Proxy { get; set; }
@@ -70,7 +71,7 @@ namespace ClientWatcher
 
         private void OnDeleteFileNotified(string fileName)
         {
-            if(alreadyHaveFile(fileName,""))
+            if(alreadyHaveFile(fileName))
             if (System.Windows.MessageBox.Show("File "+fileName+" was deleted in the server. Do you want to delete it locally?", "Confirmation", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
             {
                 var fullPath = _syncFolder + "\\" + fileName;
@@ -107,20 +108,31 @@ namespace ClientWatcher
         {
             if(_watcher!= null)
             {
-                _watcher.Deleted -= new FileSystemEventHandler(onWatcherDeleted);
                 _watcher.Created -= new FileSystemEventHandler(onWatcherCreated);
+                _watcher.Changed -= new FileSystemEventHandler(onWatcherChanged);
                 _watcher.Dispose();
                 _watcher = null;
+
+                _deleteWatcher.Deleted -= new FileSystemEventHandler(onWatcherDeleted);
+                _deleteWatcher.Dispose();
+                _deleteWatcher = null;
             }
+
+            CurrentFolder.Content = _syncFolder;
+
             _watcher = new FileSystemWatcher();
             _watcher.Path = _syncFolder;
-            CurrentFolder.Content = _syncFolder;
-            //_watcher.NotifyFilter = NotifyFilters.LastWrite;
+            _watcher.NotifyFilter = NotifyFilters.LastWrite; //Need another watcher for Delete because this filter invalidates Delete
             _watcher.Filter = "*.*";
-            //_watcher.Changed += new FileSystemEventHandler(OnWatcherChanged);
-            _watcher.Deleted += new FileSystemEventHandler(onWatcherDeleted);
+            _watcher.Changed += new FileSystemEventHandler(onWatcherChanged);
             _watcher.Created += new FileSystemEventHandler(onWatcherCreated);
             _watcher.EnableRaisingEvents = true;
+
+            _deleteWatcher = new FileSystemWatcher();
+            _deleteWatcher.Path = _syncFolder;
+            _deleteWatcher.Filter = "*.*";
+            _deleteWatcher.Deleted += new FileSystemEventHandler(onWatcherDeleted);
+            _deleteWatcher.EnableRaisingEvents = true;
         }
 
         private void btnSendTest_Click(object sender, RoutedEventArgs e)
@@ -130,10 +142,12 @@ namespace ClientWatcher
             sendFile(filename);
         }
 
-        private bool alreadyHaveFile(string fileName, string CRC)
+        private bool alreadyHaveFile(string fileName, string CRC="")
         {
-            //Include CRC check ************************************************************************** TO DO
-            return File.Exists(_syncFolder + "\\" + fileName);
+            if (File.Exists(_syncFolder + "\\" + fileName))
+                return ((CRC=="")||(CRC == calculateMD5(_syncFolder + "\\" + fileName)));
+
+            return false;
         }
 
         string _downloadedFile = "";
@@ -144,10 +158,10 @@ namespace ClientWatcher
             using (var client = new HttpClient())
             {
                 var responseStream = await client.GetStreamAsync(_wepApiURLtoDownload + "?fileName=" + fileName);
-                using (var fileWritter = File.Create(_syncFolder + "\\" + fileName))
+                using (var fileWriter = File.Create(_syncFolder + "\\" + fileName))
                 {
                     //responseStream.Seek(0, SeekOrigin.Begin);
-                    responseStream.CopyTo(fileWritter);
+                    responseStream.CopyTo(fileWriter);
                 }
             }
         }
@@ -166,12 +180,19 @@ namespace ClientWatcher
                 });
                 string tempGuid = response.Content.ReadAsStringAsync().Result;
                 string msgBoxText = "";
-                if (response.StatusCode == System.Net.HttpStatusCode.Ambiguous)
-                    msgBoxText = "File "+fileName+" already exists in server. Do you want to overwrite it?";
-                else
-                    if (response.StatusCode == System.Net.HttpStatusCode.OK)
-                    msgBoxText = "File " + fileName + " does not exists in server. Do you want to add it?";
-                
+                switch (response.StatusCode)
+                {
+                    case System.Net.HttpStatusCode.Ambiguous:
+                        msgBoxText = "File " + fileName + " already exists in server. Do you want to overwrite it?";
+                        break;
+                    case System.Net.HttpStatusCode.OK:
+                        msgBoxText = "File " + fileName + " does not exists in server. Do you want to add it?";
+                        break;
+                    case System.Net.HttpStatusCode.NotModified:
+                    default: // Same Hash, nothing gets done
+                        return;
+                }
+
                 if (System.Windows.MessageBox.Show(msgBoxText, "Confirmation", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
                 {
                     var overwriteResponse = await client.PostAsync(_webApiURLtoConfirmSave + "?fileName=" + fileName, new StringContent(tempGuid));
@@ -215,11 +236,19 @@ namespace ClientWatcher
             return b;
         }
 
-        //Not being called ATM
+        Dictionary<string, DateTime> changedFiles = new Dictionary<string, DateTime>();
         private void onWatcherChanged(object source, FileSystemEventArgs e)
         {
-            if (!fileExistsOnServer(e.Name, "").Result)
-                Task.WaitAll(sendFile(e.Name));
+            if (changedFiles.ContainsKey(e.Name) && (DateTime.Now.Subtract(changedFiles[e.Name]).TotalSeconds < 3))
+                return;
+
+            //Task.WaitAll(sendFile(e.Name));
+            sendFile(e.Name);
+
+            if (changedFiles.ContainsKey(e.Name))
+                changedFiles[e.Name] = DateTime.Now;
+            else
+                changedFiles.Add(e.Name, DateTime.Now);
         }
 
         private void onWatcherCreated(object source, FileSystemEventArgs e)
@@ -243,30 +272,27 @@ namespace ClientWatcher
 
         private async Task deleteFileOnServer(string fileName)
         {
-            var lastDotIndex = fileName.LastIndexOf('.');
-            var nameLength = lastDotIndex >= 0 ? lastDotIndex : fileName.Length;
-            var extensionLength = fileName.Length - 1 - nameLength;
-            var name = fileName.Substring(0, nameLength);
+            //var lastDotIndex = fileName.LastIndexOf('.');
+            //var nameLength = lastDotIndex >= 0 ? lastDotIndex : fileName.Length;
+            //var extensionLength = fileName.Length - 1 - nameLength;
+            //var name = fileName.Substring(0, nameLength);
 
-            string extension;
-            if (lastDotIndex != - 1)
-                extension = fileName.Substring(lastDotIndex + 1, extensionLength);
-            else
-                extension = "";
+            //string extension;
+            //if (lastDotIndex != - 1)
+            //    extension = fileName.Substring(lastDotIndex + 1, extensionLength);
+            //else
+            //    extension = "";
             using (var client = new HttpClient())
             {
-                var response = await client.DeleteAsync(_webApiURLtoDelete + "?filename=" + name + "&extension=" + extension);
+                var response = await client.DeleteAsync(_webApiURLtoDelete + "?filename=" + fileName /*name + "&extension=" + extension*/);
             }
         }
         private string calculateMD5(string file)
         {
             using (var md5 = MD5.Create())
             {
-                using (var stream = File.OpenRead(file))
-                {
-                    var hash = md5.ComputeHash(stream);
-                    return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
-                }
+                var hash = md5.ComputeHash(tryToReadFile(file));
+                return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
             }
         }
 

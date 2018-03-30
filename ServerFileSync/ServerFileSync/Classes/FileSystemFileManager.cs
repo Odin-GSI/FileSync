@@ -80,16 +80,29 @@ namespace ServerFileSync
 
         public string GetHash(string fileName)
         {
-            string CRC;
+            byte[] b = System.IO.File.ReadAllBytes(_filePath + "\\" + fileName);
+            
+            return calculateCRC(b);
+        }
+
+        private string calculateCRC(byte[] b)
+        {
             using (var md5 = MD5.Create())
             {
-                using (var stream = GetStream(fileName))
-                {
-                    CRC = BitConverter.ToString(md5.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
-                }
+                return BitConverter.ToString(md5.ComputeHash(b)).Replace("-", "").ToLowerInvariant();
             }
+        }
 
-            return CRC;
+        public bool SameHash(string fileName, byte[] fileContent)
+        {
+            try
+            {
+                return GetHash(fileName).Equals(calculateCRC(fileContent));
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         private string getTempFileName(string fileName, Guid tempGuid)
