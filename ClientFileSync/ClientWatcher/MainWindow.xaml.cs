@@ -36,7 +36,7 @@ namespace ClientWatcher
         private string _wepApiURLtoDeleteTemp = ConfigurationManager.AppSettings["WepApiURLtoDeleteTemp"].ToString();
         private string _wepApiURLtoDownload = ConfigurationManager.AppSettings["WepApiURLtoDownload"].ToString();
         private string _wepApiURLExistsFile = ConfigurationManager.AppSettings["WepApiURLExistsFile"].ToString();
-        private string _singalRHost = ConfigurationManager.AppSettings["SignalRHost"].ToString();
+        private string _signalRHost = ConfigurationManager.AppSettings["SignalRHost"].ToString();
         FileSystemWatcher _watcher; //Watcher for Copy and Modify
         FileSystemWatcher _deleteWatcher; //Watcher for Delete
 
@@ -50,7 +50,7 @@ namespace ClientWatcher
             Active = true;
             Thread = new System.Threading.Thread(() =>
             {
-                Connection = new HubConnection(_singalRHost);
+                Connection = new HubConnection(_signalRHost);
                 Connection.Error += Connection_Error;
                 Connection.StateChanged += Connection_StateChanged;
                 Proxy = Connection.CreateHubProxy("FileSyncHub");

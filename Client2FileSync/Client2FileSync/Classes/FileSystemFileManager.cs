@@ -1,12 +1,11 @@
-﻿using ServerFileSync.Interfaces;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Web;
 
-namespace ServerFileSync
+namespace Client2FileSync.Classes
 {
     public class FileSystemFileManager : IFileManager
     {

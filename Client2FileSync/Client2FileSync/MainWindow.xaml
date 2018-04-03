@@ -1,0 +1,13 @@
+﻿<Window x:Class="Client2FileSync.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Client2FileSync"
+        mc:Ignorable="d"
+        Title="Sync Client v2" Height="217.105" Width="335.526">
+    <Grid Margin="0,0,14,0">
+        <Label Margin="10,10,0,0" HorizontalAlignment="Left" Width="153" Height="27" VerticalAlignment="Top">SignalR Connection Status:</Label>
+        <TextBlock x:Name="tbSignalRConnectionStatus" Margin="24,37,0,0" Text="{Binding SignalRConnectionStatus}" Height="27" VerticalAlignment="Top" HorizontalAlignment="Left" Width="118"/>
+    </Grid>
+</Window>
