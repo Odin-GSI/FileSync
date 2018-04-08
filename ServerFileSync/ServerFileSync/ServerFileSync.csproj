@@ -44,6 +44,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="kahua.kdk.dotnet">
+      <HintPath>..\..\DLLs\kahua.kdk.dotnet.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.AspNet.SignalR.Core, Version=2.2.2.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.AspNet.SignalR.Core.2.2.2\lib\net45\Microsoft.AspNet.SignalR.Core.dll</HintPath>
     </Reference>
@@ -125,6 +128,10 @@
     </Compile>
     <Compile Include="Interfaces\IFileNotifier.cs" />
     <Compile Include="Interfaces\IFileManager.cs" />
+    <Compile Include="Models\FileStatusType.cs" />
+    <Compile Include="Models\FolderFileState.cs" />
+    <Compile Include="Models\FolderFileStateCollection.cs" />
+    <Compile Include="Models\FolderState.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Startup.cs" />
   </ItemGroup>
@@ -139,7 +146,6 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />
-    <Folder Include="Models\" />
   </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>

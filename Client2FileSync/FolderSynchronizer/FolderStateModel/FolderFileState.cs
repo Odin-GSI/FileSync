@@ -1,17 +1,18 @@
-﻿using Client2FileSync.Enums;
+﻿using FolderSynchronizer.Enums;
 using kahua.kdk.property;
 
-namespace Client2FileSync.Classes
+namespace FolderSynchronizer.FolderStateModel
 {
     public class FolderFileState : Propertied
     {
         static class Names
         {
             public const string FolderFileState = "FolderFileState";
-            public const string Filename = "Filename";
+            public const string FileName = "FileName";
             public const string Hash = "Hash";
             public const string CurrentStatus = "CurrentStatus";
         }
+
         #region Constructors
         public FolderFileState()
            : base(Names.FolderFileState)
@@ -26,13 +27,19 @@ namespace Client2FileSync.Classes
         }
         #endregion Constructors
 
-        public string Filename() { return Properties.String(Names.Filename); }
-        public FolderFileState Filename(string filename) { Properties.String(Names.Filename, filename);return this; }
+        #region FileName
+        public string FileName() { return Properties.String(Names.FileName); }
+        public FolderFileState FileName(string filename) { Properties.String(Names.FileName, filename);return this; }
+        #endregion FileName
 
+        #region Hash
         public string Hash() { return Properties.String(Names.Hash); }
         public FolderFileState Hash(string hash) { Properties.String(Names.Hash, hash);return this; }
+        #endregion Hash
 
-        //**************************************************** How to use enum in Propertied?
-        public FileStatusType CurrentStatus { get; set; }
+        #region CurrentStatus Enum
+        public FileStatusType CurrentStatus() { return Properties.Enum<FileStatusType>(Names.CurrentStatus); }
+        public FolderFileState CurrentStatus(FileStatusType fileStatusType) { Properties.Enum(Names.CurrentStatus, fileStatusType);return this; }
+        #endregion CurrentStatus Enum
     }
 }

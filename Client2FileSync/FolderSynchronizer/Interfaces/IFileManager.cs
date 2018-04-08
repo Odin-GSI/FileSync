@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Client2FileSync.Classes
+namespace FolderSynchronizer.Classes
 {
     public interface IFileManager
     {
@@ -19,6 +19,8 @@ namespace Client2FileSync.Classes
         Guid Save(string uri, byte[] file, bool asTemp = true);
 
         FileStream GetStream(string uri);
+
+        string GetContent(string fileName);
 
         bool Exists(string uri);
 
@@ -35,5 +37,7 @@ namespace Client2FileSync.Classes
         string GetHash(string fileName);
 
         bool SameHash(string fileName, byte[] fileContent);
+
+        IEnumerable<string> GetFilenames();
     }
 }

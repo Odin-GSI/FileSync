@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Client2FileSync.Enums
+namespace FolderSynchronizer.Enums
 {
     public enum FileStatusType
     {

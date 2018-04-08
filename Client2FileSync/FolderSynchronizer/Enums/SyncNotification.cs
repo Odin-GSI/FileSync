@@ -1,4 +1,4 @@
-﻿namespace Client2FileSync.Enums
+﻿namespace FolderSynchronizer.Enums
 {
     public enum SyncNotification
     {
@@ -11,6 +11,7 @@
         SuccessfulUpdateUpload = 4,
         SuccessfulLocalDelete = 5,
         SuccessfulServerDelete = 6,
+        UploadIgnoredFileExistedOnServer = 7,
 
         //Fail
         ConfirmUploadFail = 50,
@@ -25,11 +26,6 @@
         ReadLocalFileToUploadFail = 59,
 
         GeneralInfo = 98,
-        GeneralFail = 99,
-
-        //Conflicts
-        GeneralConflict = 100,
-        NewerVersionOnServerAndLocalVersionChanged = 101,
-        LocalFileLocked = 102
+        GeneralFail = 99
     }
 }

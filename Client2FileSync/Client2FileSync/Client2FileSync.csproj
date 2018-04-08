@@ -64,13 +64,6 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
-    <Compile Include="Classes\FileSystemFileManager.cs" />
-    <Compile Include="Classes\FolderFileState.cs" />
-    <Compile Include="Classes\FolderState.cs" />
-    <Compile Include="Classes\FolderSynchronizer.cs" />
-    <Compile Include="Enums\FileStatusType.cs" />
-    <Compile Include="Enums\SyncType.cs" />
-    <Compile Include="Interfaces\IFileManager.cs" />
     <Compile Include="ViewModels\MainViewModel.cs" />
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
@@ -111,6 +104,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\FolderSynchronizer\FolderSynchronizer.csproj">
+      <Project>{04cf7121-c4ba-40e5-ab23-352b0fe8084f}</Project>
+      <Name>FolderSynchronizer</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

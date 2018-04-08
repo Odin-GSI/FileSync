@@ -135,13 +135,6 @@ namespace ClientWatcher
             _deleteWatcher.EnableRaisingEvents = true;
         }
 
-        private void btnSendTest_Click(object sender, RoutedEventArgs e)
-        {
-            var filename = "test.txt";
-
-            sendFile(filename);
-        }
-
         private bool alreadyHaveFile(string fileName, string CRC="")
         {
             if (File.Exists(_syncFolder + "\\" + fileName))

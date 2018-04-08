@@ -58,7 +58,7 @@ namespace UnitTestServerFileSync
             mockFileManager.Setup(x => x.ExistsTemp(filename, tempGuid)).Returns(true);
 
             //ACT
-            var result = fileController.ConfirmSave(filename);
+            var result = fileController.ConfirmUpload(filename);
 
             //ASSERT
             mockFileManager.Verify(x => x.ConfirmSave(filename, tempGuid), Times.Once);

@@ -48,6 +48,11 @@ namespace ServerFileSync
             return File.Open(_folderPath + "\\" + fileName, FileMode.Open, FileAccess.Read, FileShare.Read);
         }
 
+        public string GetContent(string fileName)
+        {
+            return File.ReadAllText(_folderPath + "\\" + fileName);
+        }
+
         public Guid Save(string fileName, byte[] file, bool asTemp)
         {
             if (!asTemp)
@@ -107,6 +112,11 @@ namespace ServerFileSync
         private string getTempFileName(string fileName, Guid tempGuid)
         {
             return fileName + "_Temp_" + tempGuid.ToString();
+        }
+
+        public IEnumerable<string> GetFilenames()
+        {
+            return Directory.GetFiles(_folderPath).Select(Path.GetFileName);
         }
     }
 }

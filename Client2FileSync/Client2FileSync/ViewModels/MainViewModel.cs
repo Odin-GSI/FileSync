@@ -1,4 +1,5 @@
-﻿using Client2FileSync.Classes;
+﻿using FolderSynchronizer.Classes;
+using FolderSynchronizer.Enums;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -12,26 +13,48 @@ namespace Client2FileSync
 {
     class MainViewModel : INotifyPropertyChanged
     {
-        FolderSynchronizer folderSynchronizer;
-        public event PropertyChangedEventHandler PropertyChanged;
-        private string _signalRStatus = "";
-
+        Synchronizer folderSynchronizer;
+        
         public MainViewModel()
         {
-            folderSynchronizer = new FolderSynchronizer(ConfigurationManager.AppSettings["WepApiURL"].ToString());
-            folderSynchronizer.StartSignalR(ConfigurationManager.AppSettings["SignalRHost"].ToString(), ConfigurationManager.AppSettings["SignalRHub"].ToString());
+            Start();
+        }
+
+        public void Start()
+        {
+            folderSynchronizer = new Synchronizer(ConfigurationManager.AppSettings["WepApiURL"].ToString());
+            //folderSynchronizer = new Synchronizer("http://localhost:52051/api/FileTransfer/");
 
             folderSynchronizer.OnSignalRConnectionStateChanged += FolderSynchronizer_OnSignalRConnectionStateChanged;
+            folderSynchronizer.OnConflictConfirmationRequiredToProceed += FolderSynchronizer_OnConflictConfirmationRequiredToProceed;
+            folderSynchronizer.OnSyncNotification += FolderSynchronizer_OnSyncNotification;
 
-            string syncClientFolder = ConfigurationManager.AppSettings["SyncFolder"].ToString();
-            folderSynchronizer.StartWatcher(syncClientFolder, new FileSystemFileManager(syncClientFolder));
+            string syncClientFolder = ConfigurationManager.AppSettings["localSyncFolder"].ToString();
+            string syncServerFolder = ConfigurationManager.AppSettings["remoteSyncFolder"].ToString();
+            folderSynchronizer.StartWatcher(syncClientFolder, syncServerFolder, new FileSystemFileManager(syncClientFolder));
+
+            //Call SignalR after Watcher Sync - Allow Client StartUp Sync
+            folderSynchronizer.StartSignalR(ConfigurationManager.AppSettings["SignalRHost"].ToString(), ConfigurationManager.AppSettings["SignalRHub"].ToString());
         }
-        
+
+        private bool FolderSynchronizer_OnConflictConfirmationRequiredToProceed(string filename, SyncConflict syncEvent)
+        {
+            //Could have a list of pre-defined responses that won't be asked to the user
+            return System.Windows.MessageBox.Show(getUserMsgForSyncEvent(syncEvent,filename), "Confirmation", MessageBoxButton.YesNo) == MessageBoxResult.Yes;
+        }
+
+        private string getUserMsgForSyncEvent(SyncConflict syncConflict, string filename)
+        {
+            //Make a Switch and return a user-friendly msg
+            return syncConflict.ToString();
+        }
+
+        #region SignalRConnectionState
+        private string _signalRStatus = "";
         private void FolderSynchronizer_OnSignalRConnectionStateChanged(string connectionStatus)
         {
             SignalRConnectionStatus = connectionStatus;
         }
-
         public string SignalRConnectionStatus
         {
             get
@@ -44,10 +67,27 @@ namespace Client2FileSync
                 raisePropertyChanged("SignalRConnectionStatus");
             }
         }
+        #endregion SignalRConnectionState
 
+        #region SyncNotification
+        private string _syncNotif = "";
+        private void FolderSynchronizer_OnSyncNotification(string fileName, SyncNotification syncNotification, string optionalMsg)
+        {
+            SyncNotification = "File " + fileName + " " + syncNotification.ToString() + ". " + optionalMsg;
+        }
+        public string SyncNotification
+        {
+            get { return _syncNotif; }
+            set { _syncNotif = value; raisePropertyChanged("SyncNotification"); }
+        }
+        #endregion SyncNotification
+
+        #region INotify
+        public event PropertyChangedEventHandler PropertyChanged;
         public void raisePropertyChanged(string propertyName)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
+        #endregion INotify
     }
 }

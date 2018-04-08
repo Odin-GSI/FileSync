@@ -20,6 +20,8 @@ namespace ServerFileSync.Interfaces
 
         FileStream GetStream(string uri);
 
+        string GetContent(string fileName);
+
         bool Exists(string uri);
 
         bool ExistsTemp(string uri, Guid temp);
@@ -35,5 +37,7 @@ namespace ServerFileSync.Interfaces
         string GetHash(string fileName);
 
         bool SameHash(string fileName, byte[] fileContent);
+
+        IEnumerable<string> GetFilenames();
     }
 }

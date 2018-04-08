@@ -5,7 +5,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Web;
 
-namespace Client2FileSync.Classes
+namespace FolderSynchronizer.Classes
 {
     public class FileSystemFileManager : IFileManager
     {
@@ -45,6 +45,11 @@ namespace Client2FileSync.Classes
         public FileStream GetStream(string fileName)
         {
             return File.Open(_folderPath + "\\" + fileName, FileMode.Open, FileAccess.Read, FileShare.Read);
+        }
+
+        public string GetContent(string fileName)
+        {
+            return File.ReadAllText(_folderPath + "\\" + fileName);
         }
 
         public Guid Save(string fileName, byte[] file, bool asTemp)
@@ -106,6 +111,11 @@ namespace Client2FileSync.Classes
         private string getTempFileName(string fileName, Guid tempGuid)
         {
             return fileName + "_Temp_" + tempGuid.ToString();
+        }
+
+        public IEnumerable<string> GetFilenames()
+        {
+            return Directory.GetFiles(_folderPath).Select(Path.GetFileName);
         }
     }
 }
