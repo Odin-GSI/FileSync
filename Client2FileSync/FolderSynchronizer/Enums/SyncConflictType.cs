@@ -6,16 +6,16 @@ using System.Threading.Tasks;
 
 namespace FolderSynchronizer.Enums
 {
-    public enum SyncConflict
+    public enum SyncConflictType
     {
         //Conflicts
         GeneralConflict = 0,
         
-        NewerVersionOnServerAndLocalVersionChanged = 1,
+        DownloadingNewerVersionOnServerAndLocalVersionChanged = 1,
         NewerVersionOnServerAndLocalDeleted = 2,
         NewLocalFileOtherVersionOnServer = 3,
         FileDeletedOnServerIsNewerVersion = 4,
-        FileDeletedOnServerndLocalIsNewer = 5,
+        FileDeletedOnServerAndLocalIsNewer = 5,
         NewerVersionOnServerDeletedAndLocalChanged = 6,
 
         LocalFileLocked = 99

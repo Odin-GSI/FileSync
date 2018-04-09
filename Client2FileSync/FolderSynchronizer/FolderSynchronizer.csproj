@@ -51,14 +51,18 @@
   <ItemGroup>
     <Compile Include="Classes\FileSystemFileManager.cs" />
     <Compile Include="Classes\FolderStatusManager.cs" />
+    <Compile Include="Classes\SyncConflict.cs" />
+    <Compile Include="Classes\WebApiManager.cs" />
+    <Compile Include="Enums\OnConflictAction.cs" />
     <Compile Include="FolderStateModel\FolderFileState.cs" />
     <Compile Include="FolderStateModel\FolderFileStateCollection.cs" />
     <Compile Include="FolderStateModel\FolderState.cs" />
     <Compile Include="Classes\FolderSynchronizer.cs" />
     <Compile Include="Enums\FileStatusType.cs" />
-    <Compile Include="Enums\SyncConflict.cs" />
+    <Compile Include="Enums\SyncConflictType.cs" />
     <Compile Include="Enums\SyncNotification.cs" />
     <Compile Include="Interfaces\IFileManager.cs" />
+    <Compile Include="Interfaces\IServerManager.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

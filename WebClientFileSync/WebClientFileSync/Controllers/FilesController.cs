@@ -65,7 +65,7 @@ namespace WebClientFileSync.Controllers
         {
             using (var client = new HttpClient())
             {
-                var response = client.DeleteAsync(_webApiURLtoDelete+"?filename="+fileName).Result;
+                var response = client.DeleteAsync(_webApiURLtoDelete+"?filename="+fileName+ "&previousHash=").Result;
 
                 if (response.StatusCode == HttpStatusCode.OK)
                     TempData["Message"] = "File deleted.";

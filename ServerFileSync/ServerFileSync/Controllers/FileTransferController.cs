@@ -172,7 +172,7 @@ namespace ServerFileSync.Controllers
                     if (CRC.Equals(previousHash))
                     {
                         _fileManager.Save(fileName, fileBytes, false);
-                        _hubWrapper.NotifyNewFile(fileName, CRC);
+                        _hubWrapper.NotifyNewFile(fileName, _fileManager.GetHash(fileName)); //Send the updated Hash
                         myResponse.StatusCode = HttpStatusCode.Accepted;
                         return myResponse;
                     }
@@ -220,8 +220,9 @@ namespace ServerFileSync.Controllers
 
                 if (String.IsNullOrEmpty(previousHash)||(_fileManager.GetHash(filename).Equals(previousHash)))
                 {
+                    string hash = _fileManager.GetHash(filename);
                     _fileManager.Delete(filename);
-                    _hubWrapper.NotifyDeleteFile(filename);
+                    _hubWrapper.NotifyDeleteFile(filename, hash);
                     return new HttpResponseMessage(HttpStatusCode.OK);
                 }
 
@@ -244,9 +245,9 @@ namespace ServerFileSync.Controllers
         /// <param name="fileName"></param>
         /// <returns>
         /// String Content: true if name exists, false if it doesn't
-        ///// HttpStatusCode:
-        ///// Ok: if file exists with given name and hash,
-        ///// Ambiguous: if file exists with given name but different hash.
+        /// HttpStatusCode:
+        /// Ok: if file exists with given name and hash,
+        /// Ambiguous: if file exists with given name but different hash.
         /// </returns>
         [HttpGet]
         public HttpResponseMessage Exists(string fileName/*, string hash*/)

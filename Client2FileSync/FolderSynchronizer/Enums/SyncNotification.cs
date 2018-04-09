@@ -21,11 +21,12 @@
         UpdateUploadFail = 54,
         LocalDeleteFail = 55,
         ServerDeleteFail = 56,
-        SuccessfulNewDownloadLocalFileSaveFail = 57,
-        SuccessfulUpdateDownloadLocalFileSaveFail = 58,
+        ErrorWritingFile = 57,
+        ErrorOverwritingFile = 58,
         ReadLocalFileToUploadFail = 59,
 
         GeneralInfo = 98,
-        GeneralFail = 99
+        GeneralFail = 99,
+        UserCallOnConflict = 100
     }
 }

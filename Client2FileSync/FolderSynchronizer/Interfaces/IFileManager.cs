@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FolderSynchronizer.Classes
+namespace FolderSynchronizer.Interfaces
 {
     public interface IFileManager
     {
@@ -39,5 +39,9 @@ namespace FolderSynchronizer.Classes
         bool SameHash(string fileName, byte[] fileContent);
 
         IEnumerable<string> GetFilenames();
+
+        byte[] TryToGetContent(string fileName, int tries = 0);
+        void TryToSaveFile(string fileName, byte[] fileContent, int tries = 0);
+        void TryToDeleteFile(string fileName, int tries = 0);
     }
 }

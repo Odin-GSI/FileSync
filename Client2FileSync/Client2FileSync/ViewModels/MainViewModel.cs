@@ -26,24 +26,35 @@ namespace Client2FileSync
             //folderSynchronizer = new Synchronizer("http://localhost:52051/api/FileTransfer/");
 
             folderSynchronizer.OnSignalRConnectionStateChanged += FolderSynchronizer_OnSignalRConnectionStateChanged;
-            folderSynchronizer.OnConflictConfirmationRequiredToProceed += FolderSynchronizer_OnConflictConfirmationRequiredToProceed;
+            folderSynchronizer.OnConflictConfirmationRequiredToProceed += FolderSynchronizer_OnConflictConfirmationRequiredToProceedAsync;
             folderSynchronizer.OnSyncNotification += FolderSynchronizer_OnSyncNotification;
 
             string syncClientFolder = ConfigurationManager.AppSettings["localSyncFolder"].ToString();
             string syncServerFolder = ConfigurationManager.AppSettings["remoteSyncFolder"].ToString();
-            folderSynchronizer.StartWatcher(syncClientFolder, syncServerFolder, new FileSystemFileManager(syncClientFolder));
 
-            //Call SignalR after Watcher Sync - Allow Client StartUp Sync
-            folderSynchronizer.StartSignalR(ConfigurationManager.AppSettings["SignalRHost"].ToString(), ConfigurationManager.AppSettings["SignalRHub"].ToString());
+            try
+            {
+                folderSynchronizer.StartWatcher(syncClientFolder, syncServerFolder, new FileSystemFileManager(syncClientFolder, false));
+
+                //Call SignalR after Watcher Sync - Allow Client StartUp Sync
+                folderSynchronizer.StartSignalR(ConfigurationManager.AppSettings["SignalRHost"].ToString(), ConfigurationManager.AppSettings["SignalRHub"].ToString());
+            }
+            catch(Exception ex)
+            {
+                SyncNotification = ex.Message;
+            }
         }
 
-        private bool FolderSynchronizer_OnConflictConfirmationRequiredToProceed(string filename, SyncConflict syncEvent)
+        private async Task FolderSynchronizer_OnConflictConfirmationRequiredToProceedAsync(string filename, SyncConflictType conflictType, string conflictID)
         {
             //Could have a list of pre-defined responses that won't be asked to the user
-            return System.Windows.MessageBox.Show(getUserMsgForSyncEvent(syncEvent,filename), "Confirmation", MessageBoxButton.YesNo) == MessageBoxResult.Yes;
+            if (System.Windows.MessageBox.Show(getUserMsgForSyncEvent(conflictType, filename), "Confirmation", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+                await folderSynchronizer.ProcessConflictAsync(conflictID, OnConflictAction.Proceed);
+            else
+                await folderSynchronizer.ProcessConflictAsync(conflictID, OnConflictAction.Cancel);
         }
 
-        private string getUserMsgForSyncEvent(SyncConflict syncConflict, string filename)
+        private string getUserMsgForSyncEvent(SyncConflictType syncConflict, string filename)
         {
             //Make a Switch and return a user-friendly msg
             return syncConflict.ToString();

@@ -3,6 +3,6 @@
     public interface IFileNotifier
     {
         void NotifyNewFile(string fileName, string CRC);
-        void NotifyDeleteFile(string fileName);
+        void NotifyDeleteFile(string fileName, string CRC);
     }
 }

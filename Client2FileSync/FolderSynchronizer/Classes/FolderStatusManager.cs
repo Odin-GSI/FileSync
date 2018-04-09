@@ -1,4 +1,5 @@
 ﻿using FolderSynchronizer.Enums;
+using FolderSynchronizer.Interfaces;
 using FolderSynchronizer.FolderStateModel;
 using System.Collections.Generic;
 using System.IO;
@@ -8,22 +9,28 @@ namespace FolderSynchronizer.Classes
 {
     class FolderStatusManager
     {
-        private string _folderStateSaveFile = "\\FolderState\\.folderState";
+        private string _statusFileFolderName = "FolderState";
+        private string _statusFileName = ".folderState";
+        private string _folderStateSaveFilePath;
         private FolderState _folderState;
         private bool _createdFromFile = false;
         private IFileManager _fileManager;
 
         public FolderStatusManager(string localFolderPath, string remoteFolderName, IFileManager fileManager)
         {
+            _folderStateSaveFilePath = "\\"+_statusFileFolderName+ "\\"+_statusFileName;
             _folderState = new FolderState();
             _fileManager = fileManager;
             
-            if (_fileManager.Exists(_folderStateSaveFile))
+            if (_fileManager.Exists(_folderStateSaveFilePath))
             {
-                _folderState.Definition = _fileManager.GetContent(_folderStateSaveFile);
+                _folderState.Definition = _fileManager.GetContent(_folderStateSaveFilePath);
                 _createdFromFile = true;
                 return;
             }
+            
+            if (_fileManager.GetFilenames().Count() > 0)
+                throw new InvalidDataException("New Sync Folder must be empty");
 
             _folderState
                 .LocalPath(localFolderPath)
@@ -32,11 +39,14 @@ namespace FolderSynchronizer.Classes
             SaveFolderState(_folderState.LocalPath());
         }
 
+        public string GetStatusFileFolderName { get { return _statusFileFolderName; } }
+        public string GetStatusFileName { get { return _statusFileName; } }
+
         public bool WasCreatedFromFile { get { return _createdFromFile; } }
         
         public void SaveFolderState(string folderPath)
         {
-            File.WriteAllText(folderPath + _folderStateSaveFile, _folderState.Definition);
+            File.WriteAllText(folderPath + _folderStateSaveFilePath, _folderState.Definition);
         }
 
         public List<FolderFileState> ReadFolder()
@@ -45,7 +55,7 @@ namespace FolderSynchronizer.Classes
             var files = _fileManager.GetFilenames();
 
             foreach(string file in files)
-                if("\\"+file!=_folderStateSaveFile)
+                if("\\"+file!=_folderStateSaveFilePath)
                     result.Add(new FolderFileState()
                             .FileName(file)
                             .Hash(_fileManager.GetHash(file))
@@ -102,7 +112,7 @@ namespace FolderSynchronizer.Classes
 
         public void SaveStatus()
         {
-            File.WriteAllText(_folderState.LocalPath() + _folderStateSaveFile, _folderState.Definition);
+            File.WriteAllText(_folderState.LocalPath() + _folderStateSaveFilePath, _folderState.Definition);
         }
 
         public void DeleteFileLocalAndServer(string fileName)

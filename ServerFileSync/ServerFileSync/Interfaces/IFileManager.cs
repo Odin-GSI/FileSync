@@ -39,5 +39,9 @@ namespace ServerFileSync.Interfaces
         bool SameHash(string fileName, byte[] fileContent);
 
         IEnumerable<string> GetFilenames();
+
+        byte[] TryToGetContent(string fileName, int tries = 0);
+        void TryToSaveFile(string fileName, byte[] fileContent, int tries = 0);
+        void TryToDeleteFile(string fileName, int tries = 0);
     }
 }

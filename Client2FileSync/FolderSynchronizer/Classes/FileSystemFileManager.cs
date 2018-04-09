@@ -1,4 +1,5 @@
-﻿using System;
+﻿using FolderSynchronizer.Interfaces;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -10,15 +11,23 @@ namespace FolderSynchronizer.Classes
     public class FileSystemFileManager : IFileManager
     {
         private string _folderPath;
+        private string _tempFolderPath;
         public string FilePath { get => _folderPath; set => _folderPath = value; }
 
-        public FileSystemFileManager(string folderPath)
+        public FileSystemFileManager(string folderPath, bool useTempFolder = true)
         {
             if (!Directory.Exists(folderPath))
                 Directory.CreateDirectory(folderPath);
-            this._folderPath = folderPath;
+            _folderPath = folderPath;
+
+            if (useTempFolder)
+            {
+                _tempFolderPath = _folderPath + "\\Temp";
+                if (!Directory.Exists(_tempFolderPath))
+                    Directory.CreateDirectory(_tempFolderPath);
+            }
         }
-        
+
         public void Delete(string fileName)
         {
             if (File.Exists(_folderPath + "\\" + fileName))
@@ -28,8 +37,8 @@ namespace FolderSynchronizer.Classes
         public void DeleteTemp(string fileName, Guid tempGuid)
         {
             string fileNameTemp = getTempFileName(fileName, tempGuid);
-            if (File.Exists(_folderPath + "\\" + fileNameTemp))
-                File.Delete(_folderPath + "\\" + fileNameTemp);
+            if (File.Exists(_tempFolderPath + "\\" + fileNameTemp))
+                File.Delete(_tempFolderPath + "\\" + fileNameTemp);
         }
 
         public bool Exists(string fileName)
@@ -39,7 +48,7 @@ namespace FolderSynchronizer.Classes
 
         public bool ExistsTemp(string fileName, Guid tempGuid)
         {
-            return File.Exists(_folderPath + "\\" + getTempFileName(fileName,tempGuid));
+            return File.Exists(_tempFolderPath + "\\" + getTempFileName(fileName, tempGuid));
         }
 
         public FileStream GetStream(string fileName)
@@ -57,34 +66,34 @@ namespace FolderSynchronizer.Classes
             if (!asTemp)
             {
                 File.WriteAllBytes(_folderPath + "\\" + fileName, file);
-                return new Guid(new String('0',32));
+                return new Guid(new String('0', 32));
             }
             else
             {
                 Guid tempGuid = Guid.NewGuid();
-                File.WriteAllBytes(_folderPath + "\\" + getTempFileName(fileName,tempGuid), file);
+                File.WriteAllBytes(_tempFolderPath + "\\" + getTempFileName(fileName, tempGuid), file);
                 return tempGuid;
             }
         }
 
         public void ConfirmSave(string fileName, Guid tempGuid)
         {
-            Move(getTempFileName(fileName,tempGuid),fileName);
+            Move(_tempFolderPath + "\\" + getTempFileName(fileName, tempGuid), _folderPath + "\\" + fileName);
         }
 
         public void Move(string sourceName, string destinyName)
         {
-            if (this.Exists(sourceName))
+            if (File.Exists(sourceName))
             {
-                this.Save(destinyName, File.ReadAllBytes(_folderPath + "\\" + sourceName),false);
-                this.Delete(sourceName);
+                File.WriteAllBytes(destinyName, File.ReadAllBytes(sourceName));
+                File.Delete(sourceName);
             }
         }
 
         public string GetHash(string fileName)
         {
             byte[] b = System.IO.File.ReadAllBytes(_folderPath + "\\" + fileName);
-            
+
             return calculateCRC(b);
         }
 
@@ -116,6 +125,54 @@ namespace FolderSynchronizer.Classes
         public IEnumerable<string> GetFilenames()
         {
             return Directory.GetFiles(_folderPath).Select(Path.GetFileName);
+        }
+
+        public byte[] TryToGetContent(string fileName, int tries = 0)
+        {
+            try
+            {
+                using (FileStream fs = GetStream(fileName))
+                {
+                    MemoryStream ms = new MemoryStream();
+                    fs.CopyTo(ms);
+                    return ms.ToArray();
+                }
+            }
+            catch (IOException e)
+            {
+                if (tries > 50)
+                    throw new IOException(e.Message);
+                else
+                    return TryToGetContent(fileName, ++tries);
+            }
+        }
+        public void TryToSaveFile(string fileName, byte[] fileContent, int tries = 0)
+        {
+            try
+            {
+                File.WriteAllBytes(_folderPath + "\\" + fileName, fileContent);
+            }
+            catch (IOException e)
+            {
+                if (tries > 50)
+                    throw new IOException(e.Message);
+                else
+                    TryToSaveFile(fileName, fileContent, ++tries);
+            }
+        }
+        public void TryToDeleteFile(string fileName, int tries = 0)
+        {
+            try
+            {
+                Delete(fileName);
+            }
+            catch (IOException e)
+            {
+                if (tries > 50)
+                    throw new IOException(e.Message);
+                else
+                    TryToDeleteFile(fileName, ++tries);
+            }
         }
     }
 }
