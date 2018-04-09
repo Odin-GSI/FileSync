@@ -17,5 +17,6 @@ namespace FolderSynchronizer.Interfaces
         Task<string[]> UploadFileAsync(string fileName, byte[] fileContent, string previousHash);
         Task<byte[]> DownloadFileAsync(string fileName);
         Task<List<FolderFileState>> GetServerFolderStatusAsync();
+        Task<bool> UploadOverwriteAsync(string fileName, byte[] fileContent);
     }
 }

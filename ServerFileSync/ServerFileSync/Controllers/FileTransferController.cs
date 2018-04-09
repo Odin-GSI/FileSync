@@ -203,6 +203,25 @@ namespace ServerFileSync.Controllers
             }
         }
 
+        [HttpPost]
+        public async Task<HttpResponseMessage> UploadOverwrite()
+        {
+            HttpRequestMessage request = this.Request;
+            if (!request.Content.IsMimeMultipartContent())
+            {
+                return new HttpResponseMessage(HttpStatusCode.UnsupportedMediaType);
+            }
+
+            var multiContents = await request.Content.ReadAsMultipartAsync();
+
+            string fileName = await getStringDataFromRequest(multiContents, 0);
+            byte[] fileBytes = await getFileBytesFromRequest(multiContents);
+
+            _fileManager.Save(fileName, fileBytes, false);
+
+            return new HttpResponseMessage(HttpStatusCode.OK);
+        }
+
         /// <summary>
         /// Deletes a file
         /// Generates SignalR NotifyDeleteFile on success
@@ -217,6 +236,9 @@ namespace ServerFileSync.Controllers
             {
                 if (String.IsNullOrEmpty(filename))
                     return new HttpResponseMessage(HttpStatusCode.BadRequest);
+
+                if (!_fileManager.Exists(filename))
+                    return new HttpResponseMessage(HttpStatusCode.OK);
 
                 if (String.IsNullOrEmpty(previousHash)||(_fileManager.GetHash(filename).Equals(previousHash)))
                 {

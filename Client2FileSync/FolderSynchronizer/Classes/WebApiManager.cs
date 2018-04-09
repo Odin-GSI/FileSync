@@ -23,6 +23,7 @@ namespace FolderSynchronizer.Classes
         private string _wepApiURLtoDownload;
         private string _wepApiURLExists;
         private string _webApiRULGetFolderStatus;
+        private string _webApiURLtoUploadOverwrite;
 
         public WebApiManager(string serviceEndPoint)
         {
@@ -34,6 +35,7 @@ namespace FolderSynchronizer.Classes
             _wepApiURLtoDownload = serviceEndPoint + "Download";
             _wepApiURLExists = serviceEndPoint + "Exists";
             _webApiRULGetFolderStatus = serviceEndPoint + "GetFolderStatus";
+            _webApiURLtoUploadOverwrite = serviceEndPoint + "UploadOverwrite";
         }
 
         public async Task<HttpStatusCode> DeleteFileAsync(string fileName, string hash)
@@ -90,6 +92,20 @@ namespace FolderSynchronizer.Classes
             }
 
             return result;
+        }
+        public async Task<bool> UploadOverwriteAsync(string fileName, byte[] fileContent)
+        {
+            using (var client = new HttpClient())
+            {
+                client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                var response = await client.PostAsync(_webApiURLtoUploadOverwrite, new MultipartFormDataContent()
+                {
+                    { new StringContent(fileName),"fileName"},
+                    { new StringContent("Overwrite"),"previousHash"},
+                    { new ByteArrayContent(fileContent), "file", fileName }
+                });
+                return response.IsSuccessStatusCode;
+            }
         }
         public async Task<byte[]> DownloadFileAsync(string fileName)
         {

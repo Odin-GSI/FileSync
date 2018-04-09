@@ -27,6 +27,7 @@
 
         GeneralInfo = 98,
         GeneralFail = 99,
-        UserCallOnConflict = 100
+        UserCallOnConflict = 100,
+        AutoSync = 101
     }
 }

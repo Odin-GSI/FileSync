@@ -57,7 +57,7 @@ namespace Client2FileSync
         private string getUserMsgForSyncEvent(SyncConflictType syncConflict, string filename)
         {
             //Make a Switch and return a user-friendly msg
-            return syncConflict.ToString();
+            return filename+" - "+syncConflict.ToString();
         }
 
         #region SignalRConnectionState

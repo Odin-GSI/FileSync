@@ -18,6 +18,9 @@ namespace FolderSynchronizer.Enums
         FileDeletedOnServerAndLocalIsNewer = 5,
         NewerVersionOnServerDeletedAndLocalChanged = 6,
 
+        //Cross conflicts on startup
+        KeepServerOnDiffFilesServerAndLocal = 50,
+
         LocalFileLocked = 99
     }
 }
