@@ -58,7 +58,7 @@ namespace FolderSynchronizer.Classes
 
             return final;
         }
-        public async Task<bool> ConfirmSaveAsync(string fileName, string tempGuid)
+        public async Task<bool> ConfirmUploadAsync(string fileName, string tempGuid)
         {
             using (var client = new HttpClient())
             {

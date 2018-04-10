@@ -124,7 +124,6 @@ namespace FolderSynchronizer.Classes
 
         public void NewFileLocalAndServer(string fileName,string CRC)
         {
-            //Console.WriteLine("Writing to folderstatus: "+fileName);
             UpdateLocalFileStatus(fileName, CRC, FileStatusType.Synced);
             UpdateServerFileStatus(fileName, CRC, FileStatusType.Synced);
         }

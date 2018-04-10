@@ -11,16 +11,9 @@ namespace FolderSynchronizer.Enums
         //Conflicts
         GeneralConflict = 0,
         
-        DownloadingNewerVersionOnServerAndLocalVersionChanged = 1,
-        NewerVersionOnServerAndLocalDeleted = 2,
-        NewLocalFileOtherVersionOnServer = 3,
-        FileDeletedOnServerIsNewerVersion = 4,
-        FileDeletedOnServerAndLocalIsNewer = 5,
-        NewerVersionOnServerDeletedAndLocalChanged = 6,
-
-        //Cross conflicts on startup
-        KeepServerOnDiffFilesServerAndLocal = 50,
-
-        LocalFileLocked = 99
+        NewerVersionRemoteAndLocalVersionChanged = 1,
+        NewerVersionRemoteAndLocalDeleted = 2,
+        UploadedLocalFileNewerVersionRemote = 3,
+        RemoteFileDeletedAndLocalIsNewer = 4
     }
 }

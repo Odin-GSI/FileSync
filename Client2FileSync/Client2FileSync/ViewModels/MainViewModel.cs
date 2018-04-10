@@ -17,11 +17,13 @@ namespace Client2FileSync
         
         public MainViewModel()
         {
-            Start();
+            //Start();
         }
 
-        public void Start()
+        public async Task StartAsync()
         {
+            SyncNotification = "Starting Synchronizer....";
+
             folderSynchronizer = new Synchronizer(ConfigurationManager.AppSettings["WepApiURL"].ToString());
             //folderSynchronizer = new Synchronizer("http://localhost:52051/api/FileTransfer/");
 
@@ -34,7 +36,7 @@ namespace Client2FileSync
 
             try
             {
-                folderSynchronizer.StartWatcherAsync(syncClientFolder, syncServerFolder, new FileSystemFileManager(syncClientFolder, false));
+                await folderSynchronizer.StartWatcherAsync(syncClientFolder, syncServerFolder, new FileSystemFileManager(syncClientFolder, false));
 
                 //Call SignalR after Watcher Sync - Allow Client StartUp Sync
                 folderSynchronizer.StartSignalR(ConfigurationManager.AppSettings["SignalRHost"].ToString(), ConfigurationManager.AppSettings["SignalRHub"].ToString());
@@ -43,25 +45,43 @@ namespace Client2FileSync
             {
                 SyncNotification = ex.Message;
             }
+
+            SyncNotification = "Synchronizer started.";
+        }
+
+        public void ShutOff()
+        {
+            SyncNotification = "Stopping Synchronizer.";
+
+            if (folderSynchronizer != null)
+            {
+                folderSynchronizer.Shutdown();
+                folderSynchronizer.OnSignalRConnectionStateChanged -= FolderSynchronizer_OnSignalRConnectionStateChanged;
+                folderSynchronizer.OnConflictConfirmationRequiredToProceed -= FolderSynchronizer_OnConflictConfirmationRequiredToProceedAsync;
+                folderSynchronizer.OnSyncNotification -= FolderSynchronizer_OnSyncNotification;
+                folderSynchronizer = null;
+            }
+
+            SyncNotification = "Synchronizer is off.";
         }
 
         private async Task FolderSynchronizer_OnConflictConfirmationRequiredToProceedAsync(string filename, SyncConflictType conflictType, string conflictID)
         {
             //Could have a list of pre-defined responses that won't be asked to the user
             if (System.Windows.MessageBox.Show(getUserMsgForSyncEvent(conflictType, filename), "Confirmation", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
-                await folderSynchronizer.ProcessConflictAsync(conflictID, OnConflictAction.Proceed);
+                folderSynchronizer.ProcessConflictAsync(conflictID, OnConflictAction.SyncFromRemote);
             else
-                await folderSynchronizer.ProcessConflictAsync(conflictID, OnConflictAction.Cancel);
+                folderSynchronizer.ProcessConflictAsync(conflictID, OnConflictAction.SyncFromLocal);
         }
 
         private string getUserMsgForSyncEvent(SyncConflictType syncConflict, string filename)
         {
             //Make a Switch and return a user-friendly msg
-            return filename+" - "+syncConflict.ToString();
+            return filename+" - "+syncConflict.ToString()+"\n Sync from Remote Folder?";
         }
 
         #region SignalRConnectionState
-        private string _signalRStatus = "";
+        private string _signalRStatus = "Disconnected.";
         private void FolderSynchronizer_OnSignalRConnectionStateChanged(string connectionStatus)
         {
             SignalRConnectionStatus = connectionStatus;
@@ -92,6 +112,13 @@ namespace Client2FileSync
             set { _syncNotif = value; raisePropertyChanged("SyncNotification"); }
         }
         #endregion SyncNotification
+
+        private bool _syncIsRunning = false;
+        public bool SyncRunning
+        {
+            get { return _syncIsRunning; }
+            set { _syncIsRunning = value; if (_syncIsRunning) StartAsync(); else ShutOff(); }
+        }
 
         #region INotify
         public event PropertyChangedEventHandler PropertyChanged;

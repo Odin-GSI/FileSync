@@ -8,7 +8,9 @@ namespace FolderSynchronizer.Enums
 {
     public enum OnConflictAction
     {
-        Proceed = 0,
-        Cancel = 99
+        //Proceed = 0,
+        //Cancel = 99
+        SyncFromRemote = 1,
+        SyncFromLocal = 2
     }
 }

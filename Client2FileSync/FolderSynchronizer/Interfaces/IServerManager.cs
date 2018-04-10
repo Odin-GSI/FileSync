@@ -12,7 +12,7 @@ namespace FolderSynchronizer.Interfaces
     {
         Task<HttpStatusCode> DeleteFileAsync(string fileName, string hash);
         Task<bool> FileExistsAsync(string fileName);
-        Task<bool> ConfirmSaveAsync(string fileName, string tempGuid);
+        Task<bool> ConfirmUploadAsync(string fileName, string tempGuid);
         Task<bool> DeleteTempAsync(string fileName, string tempGuid);
         Task<string[]> UploadFileAsync(string fileName, byte[] fileContent, string previousHash);
         Task<byte[]> DownloadFileAsync(string fileName);
