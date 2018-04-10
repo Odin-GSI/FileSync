@@ -18,5 +18,6 @@ namespace FolderSynchronizer.Interfaces
         Task<byte[]> DownloadFileAsync(string fileName);
         Task<List<FolderFileState>> GetServerFolderStatusAsync();
         Task<bool> UploadOverwriteAsync(string fileName, byte[] fileContent);
+        void SetRemoteSyncFolder(string remoteFolder);
     }
 }

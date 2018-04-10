@@ -101,6 +101,9 @@ namespace FolderSynchronizer.Classes
             //The File Api to save/read files
             _fileManager = fileManager;
 
+            //Add the RemoteSyncFolder to the ServerApi
+            _serverManager.SetRemoteSyncFolder(_remoteSyncFolder);
+
             //Check the FolderStatus
             _folderSyncState = new FolderStatusManager(_localSyncFolder, _remoteSyncFolder, _fileManager);
             await startUpSyncFolderAsync();

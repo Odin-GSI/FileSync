@@ -24,6 +24,7 @@ namespace FolderSynchronizer.Classes
         private string _wepApiURLExists;
         private string _webApiRULGetFolderStatus;
         private string _webApiURLtoUploadOverwrite;
+        private string _remoteSyncFolder;
 
         public WebApiManager(string serviceEndPoint)
         {
@@ -38,11 +39,13 @@ namespace FolderSynchronizer.Classes
             _webApiURLtoUploadOverwrite = serviceEndPoint + "UploadOverwrite";
         }
 
+        public void SetRemoteSyncFolder(string remoteFolder) { _remoteSyncFolder = remoteFolder; }
+
         public async Task<HttpStatusCode> DeleteFileAsync(string fileName, string hash)
         {
             using (var client = new HttpClient())
             {
-                var response = await client.DeleteAsync(_webApiURLtoDelete + "?filename=" + fileName + "&previousHash=" + hash);
+                var response = await client.DeleteAsync(_webApiURLtoDelete + "?filename=" + fileName + "&previousHash=" + hash+ "&syncFolder="+ _remoteSyncFolder);
                 return response.StatusCode;
             }
         }
@@ -51,7 +54,7 @@ namespace FolderSynchronizer.Classes
             bool final;
             using (var client = new HttpClient())
             {
-                var response = await client.GetAsync(_wepApiURLExists + "?fileName=" + fileName);
+                var response = await client.GetAsync(_wepApiURLExists + "?fileName=" + fileName + "&syncFolder=" + _remoteSyncFolder);
                 var result = await response.Content.ReadAsStringAsync();
                 final = JsonConvert.DeserializeObject<bool>(result);
             }
@@ -62,7 +65,7 @@ namespace FolderSynchronizer.Classes
         {
             using (var client = new HttpClient())
             {
-                var overwriteResponse = await client.PostAsync(_webApiURLtoConfirmUpload + "?fileName=" + fileName, new StringContent(tempGuid));
+                var overwriteResponse = await client.PostAsync(_webApiURLtoConfirmUpload + "?fileName=" + fileName + "&syncFolder=" + _remoteSyncFolder, new StringContent(tempGuid));
                 return overwriteResponse.IsSuccessStatusCode;
             }
         }
@@ -70,7 +73,7 @@ namespace FolderSynchronizer.Classes
         {
             using (var client = new HttpClient())
             {
-                var deleteTempResponse = await client.PutAsync(_wepApiURLtoDeleteTemp + "?fileName=" + fileName, new StringContent(tempGuid));
+                var deleteTempResponse = await client.PutAsync(_wepApiURLtoDeleteTemp + "?fileName=" + fileName + "&syncFolder=" + _remoteSyncFolder, new StringContent(tempGuid));
                 return deleteTempResponse.IsSuccessStatusCode;
             }
         }
@@ -81,7 +84,7 @@ namespace FolderSynchronizer.Classes
             using (var client = new HttpClient())
             {
                 client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-                var response = await client.PostAsync(_webApiURLtoUpload, new MultipartFormDataContent()
+                var response = await client.PostAsync(_webApiURLtoUpload + "?syncFolder=" + _remoteSyncFolder, new MultipartFormDataContent()
                 {
                     { new StringContent(fileName),"fileName"},
                     { new StringContent(previousHash),"previousHash"},
@@ -98,7 +101,7 @@ namespace FolderSynchronizer.Classes
             using (var client = new HttpClient())
             {
                 client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-                var response = await client.PostAsync(_webApiURLtoUploadOverwrite, new MultipartFormDataContent()
+                var response = await client.PostAsync(_webApiURLtoUploadOverwrite + "?syncFolder=" + _remoteSyncFolder, new MultipartFormDataContent()
                 {
                     { new StringContent(fileName),"fileName"},
                     { new StringContent("Overwrite"),"previousHash"},
@@ -111,7 +114,7 @@ namespace FolderSynchronizer.Classes
         {
             using (var client = new HttpClient())
             {
-                var responseStream = await client.GetStreamAsync(_wepApiURLtoDownload + "?fileName=" + fileName);
+                var responseStream = await client.GetStreamAsync(_wepApiURLtoDownload + "?fileName=" + fileName + "&syncFolder=" + _remoteSyncFolder);
                 MemoryStream ms = new MemoryStream();
                 responseStream.CopyTo(ms);
                 return ms.ToArray();
@@ -124,7 +127,7 @@ namespace FolderSynchronizer.Classes
 
             using (var client = new HttpClient())
             {
-                var response = await client.GetAsync(_webApiRULGetFolderStatus);
+                var response = await client.GetAsync(_webApiRULGetFolderStatus + "?syncFolder=" + _remoteSyncFolder);
                 folderDefinition = await response.Content.ReadAsStringAsync();
             }
 

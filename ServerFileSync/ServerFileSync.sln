@@ -5,8 +5,6 @@ VisualStudioVersion = 15.0.27130.2027
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ServerFileSync", "ServerFileSync\ServerFileSync.csproj", "{AB6DB443-9B49-45FE-9B2C-94FE8BE66707}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ServerFileSync.Tests", "UnitTestServerFileSync\ServerFileSync.Tests.csproj", "{46B050E8-6E1A-4892-8090-56430B5AC141}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -17,10 +15,6 @@ Global
 		{AB6DB443-9B49-45FE-9B2C-94FE8BE66707}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AB6DB443-9B49-45FE-9B2C-94FE8BE66707}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AB6DB443-9B49-45FE-9B2C-94FE8BE66707}.Release|Any CPU.Build.0 = Release|Any CPU
-		{46B050E8-6E1A-4892-8090-56430B5AC141}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{46B050E8-6E1A-4892-8090-56430B5AC141}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{46B050E8-6E1A-4892-8090-56430B5AC141}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{46B050E8-6E1A-4892-8090-56430B5AC141}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

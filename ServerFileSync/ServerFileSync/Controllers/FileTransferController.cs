@@ -18,7 +18,7 @@ namespace ServerFileSync.Controllers
     public class FileTransferController : ApiController
     {
         #region Class vars
-        private string _syncFolder;
+        //private string _syncFolder;
         private IFileManager _fileManager;
         private IFileNotifier _hubWrapper;
         #endregion Class vars
@@ -29,8 +29,8 @@ namespace ServerFileSync.Controllers
         /// </summary>
         public FileTransferController()
         {
-            _syncFolder = ConfigurationManager.AppSettings["SyncFolder"].ToString();
-            _fileManager = new FileSystemFileManager(_syncFolder);
+            //_syncFolder = ConfigurationManager.AppSettings["SyncFolder"].ToString();
+            //_fileManager = new FileSystemFileManager(_syncFolder);
             _hubWrapper = FileSyncHubWrapper.Instance;
         }
 
@@ -44,7 +44,7 @@ namespace ServerFileSync.Controllers
         {
             _fileManager = fileManager;
             _hubWrapper = hubWrapper;
-            _syncFolder = syncFolder;
+            //_syncFolder = syncFolder;
         }
         #endregion Constructors
 
@@ -58,8 +58,10 @@ namespace ServerFileSync.Controllers
         /// <param name="fileName">Original name of the file</param>
         /// <returns>HttpResponseMessage</returns>
         [HttpPost]
-        public HttpResponseMessage ConfirmUpload(string fileName)
+        public HttpResponseMessage ConfirmUpload(string fileName,string syncFolder)
         {
+            _fileManager = new FileSystemFileManager(syncFolder);
+
             Guid tempGuid;
             try
             {
@@ -94,8 +96,10 @@ namespace ServerFileSync.Controllers
         /// <param name="fileName">Original name of the file</param>
         /// <returns></returns>
         [HttpPut]
-        public HttpResponseMessage DeleteTemp(string fileName)
+        public HttpResponseMessage DeleteTemp(string fileName, string syncFolder)
         {
+            _fileManager = new FileSystemFileManager(syncFolder);
+
             Guid tempGuid;
             try
             {
@@ -141,8 +145,10 @@ namespace ServerFileSync.Controllers
         /// Ambiguous: A file with same name exists, but different hash than the expected and the uploaded one. File was kept with a temporary name. Guid returned. Need to call ConfirmUpload to overwrite, or DeleteTemp to cancel
         /// </returns>
         [HttpPost]
-        public async Task<HttpResponseMessage> Upload()
+        public async Task<HttpResponseMessage> Upload(string syncFolder)
         {
+            _fileManager = new FileSystemFileManager(syncFolder);
+
             HttpRequestMessage request = this.Request;
             if (!request.Content.IsMimeMultipartContent())
             {
@@ -204,8 +210,10 @@ namespace ServerFileSync.Controllers
         }
 
         [HttpPost]
-        public async Task<HttpResponseMessage> UploadOverwrite()
+        public async Task<HttpResponseMessage> UploadOverwrite(string syncFolder)
         {
+            _fileManager = new FileSystemFileManager(syncFolder);
+
             HttpRequestMessage request = this.Request;
             if (!request.Content.IsMimeMultipartContent())
             {
@@ -230,8 +238,10 @@ namespace ServerFileSync.Controllers
         /// <param name="extension"></param>
         /// <returns></returns>
         [HttpDelete]
-        public HttpResponseMessage Delete(string filename, string previousHash)
+        public HttpResponseMessage Delete(string filename, string previousHash,string syncFolder)
         {
+            _fileManager = new FileSystemFileManager(syncFolder);
+
             try
             {
                 if (String.IsNullOrEmpty(filename))
@@ -272,8 +282,10 @@ namespace ServerFileSync.Controllers
         /// Ambiguous: if file exists with given name but different hash.
         /// </returns>
         [HttpGet]
-        public HttpResponseMessage Exists(string fileName/*, string hash*/)
+        public HttpResponseMessage Exists(string fileName, string syncFolder)
         {
+            _fileManager = new FileSystemFileManager(syncFolder);
+
             if (String.IsNullOrEmpty(fileName))
                 return new HttpResponseMessage(HttpStatusCode.BadRequest);
 
@@ -296,8 +308,10 @@ namespace ServerFileSync.Controllers
         /// <param name="fileName"></param>
         /// <returns>Stream with the file content as Stream Content in the HttpResponse</returns>
         [HttpGet]
-        public HttpResponseMessage Download(string fileName)
+        public HttpResponseMessage Download(string fileName, string syncFolder)
         {
+            _fileManager = new FileSystemFileManager(syncFolder);
+
             FileStream sourceStream = _fileManager.GetStream(fileName);
 
             HttpResponseMessage fullResponse = Request.CreateResponse(HttpStatusCode.OK);
@@ -308,8 +322,10 @@ namespace ServerFileSync.Controllers
         }
 
         [HttpGet]
-        public HttpResponseMessage GetFolderStatus()
+        public HttpResponseMessage GetFolderStatus(string syncFolder)
         {
+            _fileManager = new FileSystemFileManager(syncFolder);
+
             List<FolderFileState> remoteFiles = new List<FolderFileState>();
             var files = _fileManager.GetFilenames();
 
@@ -320,7 +336,7 @@ namespace ServerFileSync.Controllers
                         .CurrentStatus(FileStatusType.Synced));
 
             FolderState folderState = new FolderState()
-                .RemotePath(_syncFolder);
+                .RemotePath(syncFolder);
 
             foreach (var f in remoteFiles)
                 folderState.RemoteFile(f);

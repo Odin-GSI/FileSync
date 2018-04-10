@@ -62,7 +62,7 @@ namespace WebClientFileSync.Controllers
         {
             using (var client = new HttpClient())
             {
-                var response = client.DeleteAsync(_webApiURLtoDelete+"?filename="+fileName+ "&previousHash=").Result;
+                var response = client.DeleteAsync(_webApiURLtoDelete+"?filename="+fileName+ "&previousHash=&syncFolder="+ _serverSyncFolder).Result;
 
                 if (response.StatusCode == HttpStatusCode.OK)
                     TempData["Message"] = "File deleted.";
@@ -80,7 +80,7 @@ namespace WebClientFileSync.Controllers
             using (var client = new HttpClient())
             {
                 client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-                var response = client.PostAsync(_webApiURLtoLoad, new MultipartFormDataContent()
+                var response = client.PostAsync(_webApiURLtoLoad+ "?syncFolder=" + _serverSyncFolder, new MultipartFormDataContent()
                 {
                     { new StringContent(fileName),"fileName"},
                     { new StringContent("NewFile"),"previousHash"},
@@ -96,7 +96,7 @@ namespace WebClientFileSync.Controllers
                 if (response.StatusCode == HttpStatusCode.Ambiguous)
                 {
                     string tempGuid = response.Content.ReadAsStringAsync().Result;
-                    var overwriteResponse = client.PostAsync(_webApiURLtoConfirmUpload + "?fileName=" + fileName, new StringContent(tempGuid));
+                    var overwriteResponse = client.PostAsync(_webApiURLtoConfirmUpload + "?fileName=" + fileName+ "&syncFolder=" + _serverSyncFolder, new StringContent(tempGuid));
                     if(overwriteResponse.Result.IsSuccessStatusCode)
                         TempData["Message"] = "Upload successful.";
                     else
