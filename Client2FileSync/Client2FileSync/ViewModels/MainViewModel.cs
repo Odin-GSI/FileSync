@@ -34,7 +34,7 @@ namespace Client2FileSync
 
             try
             {
-                folderSynchronizer.StartWatcher(syncClientFolder, syncServerFolder, new FileSystemFileManager(syncClientFolder, false));
+                folderSynchronizer.StartWatcherAsync(syncClientFolder, syncServerFolder, new FileSystemFileManager(syncClientFolder, false));
 
                 //Call SignalR after Watcher Sync - Allow Client StartUp Sync
                 folderSynchronizer.StartSignalR(ConfigurationManager.AppSettings["SignalRHost"].ToString(), ConfigurationManager.AppSettings["SignalRHub"].ToString());

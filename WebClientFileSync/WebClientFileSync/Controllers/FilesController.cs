@@ -49,10 +49,7 @@ namespace WebClientFileSync.Controllers
                 string fileName = httpFile.FileName.Split('\\').Last();
 
                 //Upload to WebApi
-                if(sendFile(fileBytes, fileName))
-                    TempData["Message"] = "Upload successful.";
-                else
-                    TempData["Message"] = "Upload unsuccessful.";
+                sendFile(fileBytes, fileName);
             }
             else
                 TempData["Message"] = "No file selected.";
@@ -76,7 +73,7 @@ namespace WebClientFileSync.Controllers
             return RedirectToAction("List");
         }
 
-        private bool sendFile(byte[] file,string fileName)
+        private void sendFile(byte[] file,string fileName)
         {
             HttpContent fileContent = new ByteArrayContent(file);
 
@@ -91,16 +88,23 @@ namespace WebClientFileSync.Controllers
                 }).Result;
 
                 if (response.IsSuccessStatusCode)
-                    return true;
+                {
+                    TempData["Message"] = "Upload successful.";
+                    return;
+                }
 
                 if (response.StatusCode == HttpStatusCode.Ambiguous)
                 {
                     string tempGuid = response.Content.ReadAsStringAsync().Result;
                     var overwriteResponse = client.PostAsync(_webApiURLtoConfirmUpload + "?fileName=" + fileName, new StringContent(tempGuid));
-                    return overwriteResponse.Result.IsSuccessStatusCode;
+                    if(overwriteResponse.Result.IsSuccessStatusCode)
+                        TempData["Message"] = "Upload successful.";
+                    else
+                        TempData["Message"] = "Upload unsuccessful.";
                 }
                 else
-                return false;
+                    if (response.StatusCode == HttpStatusCode.NotModified)
+                        TempData["Message"] = "Upload redundant.";
             }
         }
     }
