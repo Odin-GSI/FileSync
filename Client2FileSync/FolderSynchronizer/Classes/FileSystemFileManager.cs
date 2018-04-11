@@ -127,6 +127,26 @@ namespace FolderSynchronizer.Classes
             return Directory.GetFiles(_folderPath).Select(Path.GetFileName);
         }
 
+        public void SaveFolderState(string folderStateSaveFilePath, string folderStateDefinition)
+        {
+            tryToSaveFolderState(folderStateSaveFilePath, folderStateDefinition);
+        }
+
+        private void tryToSaveFolderState(string folderStateSaveFilePath, string folderStateDefinition, int tries = 0)
+        {
+            try
+            {
+                File.WriteAllText(_folderPath + folderStateSaveFilePath, folderStateDefinition);
+            }
+            catch (IOException e)
+            {
+                if (tries > 50)
+                    throw new IOException(e.Message);
+                else
+                    tryToSaveFolderState(folderStateSaveFilePath, folderStateDefinition, ++tries);
+            }
+        }
+
         public byte[] TryToGetContent(string fileName, int tries = 0)
         {
             try

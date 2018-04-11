@@ -5,6 +5,7 @@ using Microsoft.AspNet.SignalR.Client;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -29,10 +30,10 @@ namespace FolderSynchronizer.Classes
         private Thread signalRThread;
         private IFileManager _fileManager; //Is initiated in StartWatcher
         private IServerManager _serverManager;
-        private string _signalRDownloadedFile = ""; //Needed to check last file downloaded and ignore New File Watcher event
-        private DateTime _signalRDownloadedFileTime = new DateTime();
-        private string _signalRDeletedFile = ""; //Needed to check last file deleted by SignalR and ignore Delete File Watcher event
-        private DateTime _signalRDeletedFileTime = new DateTime();
+        private string _operationDownloadedFile = ""; //Needed to check last file downloaded and ignore New File Watcher event
+        private DateTime _operationDownloadedFileTime = new DateTime();
+        private string _operationDeletedFile = ""; //Needed to check last file deleted by SignalR and ignore Delete File Watcher event
+        private DateTime _operationDeletedFileTime = new DateTime();
         public delegate void FileSyncNotification(string fileName, SyncNotification syncNotification,string optionalMsg);
         public delegate Task ProceedOnConflict(string fileName, SyncConflictType conflictType, string conflictID);
         public delegate void SignalRConnectionStateChanged(string connectionStatus);
@@ -94,7 +95,7 @@ namespace FolderSynchronizer.Classes
         }
         public async Task StartWatcherAsync(string localFolderPath, string remoteFolderPath, IFileManager fileManager)
         {
-            //The local folder to sync
+            //The folders to sync
             _localSyncFolder = localFolderPath;
             _remoteSyncFolder = remoteFolderPath;
 
@@ -155,6 +156,33 @@ namespace FolderSynchronizer.Classes
             SignalRConnection.Stop();
             signalRThread.Abort();
         }
+        public async Task SynchronizeNowAsync(string localFolderPath, string remoteFolderPath, IFileManager fileManager, bool syncOnConflictsFromRemoteFolder = true)
+        {
+            //Save current userHandledConflicts List to restore it later
+            List<SyncConflictType> current = _userHandledConflicts;
+
+            //By default, all conflicts will sync from Remote. If this param is false, user will receive conflict calls.
+            if (syncOnConflictsFromRemoteFolder) 
+                _userHandledConflicts = new List<SyncConflictType>(); //Empty userHandled List. Have them all handled by default Action
+
+            //The folders to sync
+            _localSyncFolder = localFolderPath;
+            _remoteSyncFolder = remoteFolderPath;
+
+            //The File Api to save/read files
+            _fileManager = fileManager;
+
+            //Add the RemoteSyncFolder to the ServerApi
+            _serverManager.SetRemoteSyncFolder(_remoteSyncFolder);
+
+            //Check the FolderStatus
+            _folderSyncState = new FolderStatusManager(_localSyncFolder, _remoteSyncFolder, _fileManager);
+            await startUpSyncFolderAsync();
+
+            //Restore the conflict types that will be handled by the user
+            if (syncOnConflictsFromRemoteFolder)
+                _userHandledConflicts = current;
+        }
         #endregion ToolsStarters
 
         #region SignalR
@@ -172,18 +200,12 @@ namespace FolderSynchronizer.Classes
         }
         private void OnDeleteFileNotified(string fileName, string CRC)
         {
-            //vars to prevent processing when FileWatcher triggers this Delete
-            _signalRDeletedFile = fileName;
-            _signalRDeletedFileTime = DateTime.Now;
-
+            Debug.WriteLine("SignalR OnDelete");
             operationDeleteFileAsync(fileName, CRC);
         }
         private void OnNewFileNotified(string fileName, string CRC)
         {
-            //vars to prevent processing when FileWatcher triggers this copy/modify event
-            _signalRDownloadedFile = fileName;
-            _signalRDownloadedFileTime = DateTime.Now;
-
+            Debug.WriteLine("SignalR OnNewFile");
             operationDownloadFileAsync(fileName, CRC);
         }
         #endregion SignalR
@@ -192,17 +214,18 @@ namespace FolderSynchronizer.Classes
         Dictionary<string, DateTime> changedFiles = new Dictionary<string, DateTime>();
         private void onWatcherChanged(object source, FileSystemEventArgs e)
         {
+            Debug.WriteLine("Watcher Changed");
             if (changedFiles.ContainsKey(e.Name) && (DateTime.Now.Subtract(changedFiles[e.Name]).TotalSeconds < 3))
                 return;
-
+            Debug.WriteLine("Watcher Changed - after changedFiles check");
             //Check if it was the downloaded File. OnDownload Watcher triggers Changed
-            if (_signalRDownloadedFile != "")
-                if (_signalRDownloadedFile == e.Name && DateTime.Now.Subtract(_signalRDownloadedFileTime).TotalSeconds < 5)
+            if (_operationDownloadedFile != "")
+                if (_operationDownloadedFile == e.Name && DateTime.Now.Subtract(_operationDownloadedFileTime).TotalSeconds < 5)
                 {
-                    _signalRDownloadedFile = "";
+                    _operationDownloadedFile = "";
                     return;
                 }
-
+            Debug.WriteLine("Watcher Changed - after operationDownloaded check");
             if (e.Name.Equals(_folderSyncState.GetStatusFileFolderName) || e.Name.Equals(_folderSyncState.GetStatusFileName))
                 return;
 
@@ -221,14 +244,15 @@ namespace FolderSynchronizer.Classes
 
         private void onWatcherCreated(object source, FileSystemEventArgs e)
         {
+            Debug.WriteLine("Watcher Created");
             //Check if it was the downloaded File
-            if (_signalRDownloadedFile != "")
-                if (_signalRDownloadedFile == e.Name && DateTime.Now.Subtract(_signalRDownloadedFileTime).TotalSeconds < 5)
+            if (_operationDownloadedFile != "")
+                if (_operationDownloadedFile == e.Name && DateTime.Now.Subtract(_operationDownloadedFileTime).TotalSeconds < 5)
                 {
-                    _signalRDownloadedFile = "";
+                    _operationDownloadedFile = "";
                     return;
                 }
-
+            Debug.WriteLine("Watcher Created - after operationDownloaded check");
             if (e.Name.Equals(_folderSyncState.GetStatusFileFolderName) || e.Name.Equals(_folderSyncState.GetStatusFileName))
                 return;
 
@@ -242,14 +266,15 @@ namespace FolderSynchronizer.Classes
 
         private void onWatcherDeleted(object source, FileSystemEventArgs e)
         {
+            Debug.WriteLine("Watcher Deleted");
             //Check if it was the deleted File from SignalR
-            if (_signalRDeletedFile != "")
-                if (_signalRDeletedFile == e.Name && DateTime.Now.Subtract(_signalRDeletedFileTime).TotalSeconds < 5)
+            if (_operationDeletedFile != "")
+                if (_operationDeletedFile == e.Name && DateTime.Now.Subtract(_operationDeletedFileTime).TotalSeconds < 5)
                 {
-                    _signalRDeletedFile = "";
+                    _operationDeletedFile = "";
                     return;
                 }
-
+            Debug.WriteLine("Watcher Deleted - after operationDeleted check");
             if (e.Name.Equals(_folderSyncState.GetStatusFileFolderName) || e.Name.Equals(_folderSyncState.GetStatusFileName))
                 return;
 
@@ -267,6 +292,11 @@ namespace FolderSynchronizer.Classes
         #region ServerOperations
         private async Task operationDownloadFileAsync(string filename, string CRC, bool ignoreCRCCheck = false)
         {
+            Debug.WriteLine("Operation Download");
+            //vars to prevent processing when FileWatcher triggers this copy/modify event
+            _operationDownloadedFile = filename;
+            _operationDownloadedFileTime = DateTime.Now;
+
             bool newFile = true;
 
             if (_fileManager.Exists(filename))
@@ -298,18 +328,27 @@ namespace FolderSynchronizer.Classes
             }
             try
             {
+                Debug.WriteLine("Operation Download - before saveFile");
                 _fileManager.TryToSaveFile(filename, fileContent);
+                Debug.WriteLine("Operation Download - after saveFile");
             }
             catch
             {
                 userNotification(filename, newFile ? SyncNotification.ErrorWritingFile : SyncNotification.ErrorOverwritingFile);
                 return;
             }
+            Debug.WriteLine("Operation Download - before _folderSyncState.NewFileLocalAndServer");
             _folderSyncState.NewFileLocalAndServer(filename, CRC);
+            Debug.WriteLine("Operation Download - after _folderSyncState.NewFileLocalAndServer");
             userNotification(filename, newFile ? SyncNotification.SuccessfulNewDownload : SyncNotification.SuccessfulUpdateDownload);
         }
         private async Task operationDeleteFileAsync(string filename, string CRC, bool ignoreCRCCheck = false)
         {
+            Debug.WriteLine("Operation Delete");
+            //vars to prevent processing when FileWatcher triggers this Delete
+            _operationDeletedFile = filename;
+            _operationDeletedFileTime = DateTime.Now;
+
             if (_fileManager.Exists(filename))
             {
                 if (!ignoreCRCCheck && !_fileManager.GetHash(filename).Equals(CRC)) //Local file is different that Server File deleted
@@ -320,14 +359,18 @@ namespace FolderSynchronizer.Classes
 
                 try
                 {
+                    Debug.WriteLine("Operation Delete - before tryToDelete");
                     _fileManager.TryToDeleteFile(filename);
+                    Debug.WriteLine("Operation Delete - after tryToDelete");
                 }
                 catch
                 {
                     userNotification(filename, SyncNotification.LocalDeleteFail);
                     return;
                 }
+                Debug.WriteLine("Operation Delete - before _folderSyncState.DeleteFileLocalAndServer");
                 _folderSyncState.DeleteFileLocalAndServer(filename);
+                Debug.WriteLine("Operation Delete - after _folderSyncState.DeleteFileLocalAndServer");
                 userNotification(filename, SyncNotification.SuccessfulLocalDelete);
             }
         }
@@ -336,6 +379,7 @@ namespace FolderSynchronizer.Classes
         #region LocalOperations
         private async Task operationUploadFileAsync(string filename, bool overwrite = false)
         {
+            Debug.WriteLine("Operation Upload");
             if (!_fileManager.Exists(filename))
                 return;
 
@@ -346,7 +390,9 @@ namespace FolderSynchronizer.Classes
             {
                 fileContent = _fileManager.TryToGetContent(filename);
                 CRC = _fileManager.GetHash(filename);
+                Debug.WriteLine("Operation Upload - before _folderSyncState Uploading");
                 _folderSyncState.UpdateLocalFileStatus(filename, CRC, FileStatusType.Uploading);
+                Debug.WriteLine("Operation Upload - after _folderSyncState Uploading");
 
             }
             catch (IOException ex)
@@ -358,8 +404,11 @@ namespace FolderSynchronizer.Classes
             //Auto Sync on StartUp
             if (overwrite)
             {
+                Debug.WriteLine("Operation Upload - on Overwrite - before Upload");
                 await _serverManager.UploadOverwriteAsync(filename, fileContent);
+                Debug.WriteLine("Operation Upload - on Overwrite - after Upload - before _folderSyncState.NewFileLocalAndServer");
                 _folderSyncState.NewFileLocalAndServer(filename, CRC);
+                Debug.WriteLine("Operation Upload - on Overwrite - after _folderSyncState.NewFileLocalAndServer");
                 userNotification(filename, SyncNotification.AutoSync, "Overwritten on Server");
                 return;
             }
@@ -381,17 +430,21 @@ namespace FolderSynchronizer.Classes
             switch (uploadResponse[0])
             {
                 case "OK": //New File now ComfirmUpload automatically in Server
+                    Debug.WriteLine("Operation Upload - case OK");
                     _folderSyncState.NewFileLocalAndServer(filename, CRC);
                     userNotification(filename, SyncNotification.SuccessfulNewUpload);
                     break;
                 case "Accepted": //File in Server was previous version, ComfirmUpload was called automatically in Server
+                    Debug.WriteLine("Operation Upload - case Accepted");
                     _folderSyncState.NewFileLocalAndServer(filename, CRC);
                     userNotification(filename, SyncNotification.SuccessfulUpdateUpload);
                     break;
                 case "MultipleChoices": //Ambiguous - File in Server is different from expected, the file changed. User must decide
+                    Debug.WriteLine("Operation Upload - case Ambiguous");
                     userConfirmationCall(new SyncConflict() { Filename = filename, CRC = CRC, TempGuid = tempGuid, ConflictType = SyncConflictType.UploadedLocalFileNewerVersionRemote });
                     break;
                 case "NotModified":
+                    Debug.WriteLine("Operation Upload - case NotModified");
                     _folderSyncState.NewFileLocalAndServer(filename, CRC);
                     userNotification(filename, SyncNotification.GeneralInfo, "File Exists on Server");
                     break;
@@ -406,6 +459,7 @@ namespace FolderSynchronizer.Classes
         }
         private async Task operationCallDeleteFileAsync(string filename, bool checkHash = true)
         {
+            Debug.WriteLine("Operation CallDelete");
             _folderSyncState.DeleteFileInLocalStatus(filename);
 
             if (await _serverManager.FileExistsAsync(filename))
@@ -466,7 +520,7 @@ namespace FolderSynchronizer.Classes
 
         public void SetEventsThatRequireUserConfirmation(List<SyncConflictType> handledConflicts)
         {
-            SyncConflictType[] list = new SyncConflictType[10];
+            SyncConflictType[] list = new SyncConflictType[50];
             handledConflicts.CopyTo(list);
 
             _userHandledConflicts = list.ToList();
@@ -478,19 +532,13 @@ namespace FolderSynchronizer.Classes
             switch (syncConflict)
             {
                 case SyncConflictType.GeneralConflict:
-                    break;
                 case SyncConflictType.NewerVersionRemoteAndLocalVersionChanged:
-                    break;
                 case SyncConflictType.NewerVersionRemoteAndLocalDeleted:
-                    break;
                 case SyncConflictType.UploadedLocalFileNewerVersionRemote:
-                    break;
                 case SyncConflictType.RemoteFileDeletedAndLocalIsNewer:
-                    break;
                 default:
                     return OnConflictAction.SyncFromRemote;
             }
-            return OnConflictAction.SyncFromRemote;
         }
 
         public async Task ProcessConflictAsync(string conflictID, OnConflictAction action)
@@ -583,40 +631,74 @@ namespace FolderSynchronizer.Classes
             List<FolderFileState> toCallDelete = getDifferences(_folderSyncState.FolderState.LocalFiles().ToList(), localCurrentList,false); //Call delete based on local info
 
             //Analyze Conflicts in Sync Operations
-            List<FolderFileState> conflicted = await SameFilenameDiffHashInToUploadAndToDownloadAsync(toUpload, toDownload);
+
+            //Same File ToUpload And ToDownload - NewerVersionRemoteAndLocalVersionChanged
+            List<FolderFileState> conflicted = SameFilenameDiffHashInToUploadAndToDownload(toUpload, toDownload);
             toUpload.RemoveAll(x => conflicted.Any(y => x.FileName() == y.FileName()));
             toDownload.RemoveAll(x => conflicted.Any(y => x.FileName() == y.FileName()));
-            toDelete.RemoveAll(x => conflicted.Any(y => x.FileName() == y.FileName()));
-            toCallDelete.RemoveAll(x => conflicted.Any(y => x.FileName() == y.FileName()));
+            //toDelete.RemoveAll(x => conflicted.Any(y => x.FileName() == y.FileName())); // Files shouldn't be here
+            //toCallDelete.RemoveAll(x => conflicted.Any(y => x.FileName() == y.FileName())); // Files shouldn't be here
 
-            //Other cross-conflicts:
-            //SameFileToUploadAndToDelete
-            //SameFileToDownloadAndToCallDelete
+            //SameFileToUploadAndToDelete - RemoteFileDeletedAndLocalIsNewer
+            conflicted = SameFileToUploadAndToDelete(toUpload, toDelete);
+            toUpload.RemoveAll(x => conflicted.Any(y => x.FileName() == y.FileName()));
+            toDelete.RemoveAll(x => conflicted.Any(y => x.FileName() == y.FileName()));
+
+            //SameFileToDownloadAndToCallDelete - NewerVersionRemoteAndLocalDeleted
+            conflicted = SameFileToDownloadAndToCallDelete(toDownload, toCallDelete);
+            toDownload.RemoveAll(x => conflicted.Any(y => x.FileName() == y.FileName()));
+            toCallDelete.RemoveAll(x => conflicted.Any(y => x.FileName() == y.FileName()));
 
             //Execute Sync Operations
             foreach (var f in toDelete)
-                operationDeleteFileAsync(f.FileName(), f.Hash());
+                await operationDeleteFileAsync(f.FileName(), f.Hash());
             
             foreach (var f in toDownload)
-                operationDownloadFileAsync(f.FileName(),f.Hash());
+                await operationDownloadFileAsync(f.FileName(),f.Hash());
 
             foreach (var f in toUpload)
-                operationUploadFileAsync(f.FileName());
+                await operationUploadFileAsync(f.FileName());
 
             foreach (var f in toCallDelete)
-                operationCallDeleteFileAsync(f.FileName());
+                await operationCallDeleteFileAsync(f.FileName());
 
         }
 
-        private async Task<List<FolderFileState>> SameFilenameDiffHashInToUploadAndToDownloadAsync(List<FolderFileState> toUpload, List<FolderFileState> toDownload)
+        private List<FolderFileState> SameFileToDownloadAndToCallDelete(List<FolderFileState> toDownload, List<FolderFileState> toCallDelete)
         {
-            //Keep the toDownload info
+            //Keep the Remote info
+            List<FolderFileState> conflicted = toDownload.Where(x => toCallDelete.Any(y => (x.FileName() == y.FileName()))).ToList();
+
+            //_autoSync.AddRange(conflicted.Select(f => f.FileName()));
+
+            foreach (var c in conflicted)
+                userConfirmationCall(new SyncConflict() { Filename = c.FileName(), CRC = c.Hash(), ConflictType = SyncConflictType.NewerVersionRemoteAndLocalDeleted });
+
+            return conflicted;
+        }
+
+        private List<FolderFileState> SameFileToUploadAndToDelete(List<FolderFileState> toUpload, List<FolderFileState> toDelete)
+        {
+            //Keep the Remote info
+            List<FolderFileState> conflicted = toDelete.Where(x => toUpload.Any(y => (x.FileName() == y.FileName()))).ToList();
+
+            //_autoSync.AddRange(conflicted.Select(f => f.FileName()));
+
+            foreach (var c in conflicted)
+                userConfirmationCall(new SyncConflict() { Filename = c.FileName(), CRC = c.Hash(), ConflictType = SyncConflictType.RemoteFileDeletedAndLocalIsNewer });
+
+            return conflicted;
+        }
+
+        private List<FolderFileState> SameFilenameDiffHashInToUploadAndToDownload(List<FolderFileState> toUpload, List<FolderFileState> toDownload)
+        {
+            //Keep the Remote info
             List<FolderFileState> conflicted = toDownload.Where(x => toUpload.Any(y => (x.FileName() == y.FileName()) && (x.Hash() != y.Hash()))).ToList();
 
             //_autoSync.AddRange(conflicted.Select(f => f.FileName()));
 
             foreach (var c in conflicted)
-                userConfirmationCall(new SyncConflict() {Filename = c.FileName(), CRC = c.Hash(), ConflictType = SyncConflictType.NewerVersionRemoteAndLocalVersionChanged });
+                userConfirmationCall(new SyncConflict() { Filename = c.FileName(), CRC = c.Hash(), ConflictType = SyncConflictType.NewerVersionRemoteAndLocalVersionChanged });
 
             return conflicted;
         }

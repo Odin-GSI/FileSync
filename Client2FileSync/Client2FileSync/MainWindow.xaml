@@ -79,6 +79,7 @@
     </Window.Resources>
     <Grid Margin="0,0,0,0">
         <CheckBox x:Name="cbOnOff" HorizontalAlignment="Right" Style="{DynamicResource CheckBoxStyle1}" VerticalAlignment="Top" Content="" Margin="0,6,4,0" IsChecked="{Binding SyncRunning, Mode=OneWayToSource}"/>
+        <Button Command="{Binding SyncNowCommand}" Margin="0,37,10,0" RenderTransformOrigin="0.5,0.5" HorizontalAlignment="Right" Width="69" Height="25" VerticalAlignment="Top">Sync Now</Button>
         <Label Margin="10,10,0,0" HorizontalAlignment="Left" Width="153" Height="27" VerticalAlignment="Top">SignalR Connection Status:</Label>
         <TextBlock x:Name="tbSignalRConnectionStatus" Margin="24,37,0,0" Text="{Binding SignalRConnectionStatus}" Height="27" VerticalAlignment="Top" HorizontalAlignment="Left" Width="118"/>
         <Label Height="25" VerticalAlignment="Top" Margin="10,88,0,0" HorizontalAlignment="Left" Width="106">Sync Notification:</Label>

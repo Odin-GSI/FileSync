@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Input;
 
 namespace Client2FileSync
 {
@@ -118,6 +119,46 @@ namespace Client2FileSync
         {
             get { return _syncIsRunning; }
             set { _syncIsRunning = value; if (_syncIsRunning) StartAsync(); else ShutOff(); }
+        }
+        
+        RelayCommand _SyncNowCommand;
+        public ICommand SyncNowCommand
+        {
+            get
+            {
+                if (_SyncNowCommand == null)
+                {
+                    _SyncNowCommand = new RelayCommand(param => this.SyncNowAsync());
+                }
+
+                return _SyncNowCommand;
+            }
+        }
+
+        private async Task SyncNowAsync()
+        {
+            SyncNotification = "Starting Instant Synchronization...";
+
+            folderSynchronizer = new Synchronizer(ConfigurationManager.AppSettings["WepApiURL"].ToString());
+
+            //To allow User to handle conflicts, uncomment next line - by default, conflicts will Sync From Remote
+            //folderSynchronizer.OnConflictConfirmationRequiredToProceed += FolderSynchronizer_OnConflictConfirmationRequiredToProceedAsync;
+            folderSynchronizer.OnSyncNotification += FolderSynchronizer_OnSyncNotification;
+
+            string syncClientFolder = ConfigurationManager.AppSettings["localSyncFolder"].ToString();
+            string syncServerFolder = ConfigurationManager.AppSettings["remoteSyncFolder"].ToString();
+
+            try
+            {
+                //Pass last paramater [syncOnConflictsFromRemoteFolder] false to allow the User to handle Conflicts - by default conflicts will Sync From Remote
+                await folderSynchronizer.SynchronizeNowAsync(syncClientFolder, syncServerFolder, new FileSystemFileManager(syncClientFolder, false), true);
+            }
+            catch (Exception ex)
+            {
+                SyncNotification = ex.Message;
+            }
+
+            SyncNotification = "Synchronization completed.";
         }
 
         #region INotify

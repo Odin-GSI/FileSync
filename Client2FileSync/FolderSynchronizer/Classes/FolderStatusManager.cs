@@ -37,18 +37,14 @@ namespace FolderSynchronizer.Classes
                 .LocalPath(localFolderPath)
                 .RemotePath(remoteFolderName);
 
-            SaveFolderState(_folderState.LocalPath());
+            //SaveFolderState(_folderState.LocalPath());
+            SaveStatus();
         }
 
         public string GetStatusFileFolderName { get { return _statusFileFolderName; } }
         public string GetStatusFileName { get { return _statusFileName; } }
 
         public bool WasCreatedFromFile { get { return _createdFromFile; } }
-        
-        public void SaveFolderState(string folderPath)
-        {
-            File.WriteAllText(folderPath + _folderStateSaveFilePath, _folderState.Definition);
-        }
 
         public List<FolderFileState> ReadFolder()
         {
@@ -72,25 +68,29 @@ namespace FolderSynchronizer.Classes
 
         public void UpdateServerFileStatus(string fileName, string CRC, FileStatusType status)
         {
+            Console.WriteLine("FolderStatus - UpdateServerFileStatus");
             DeleteFileInServerStatus(fileName);
 
             _folderState.RemoteFile(new FolderFileState()
                                         .FileName(fileName)
                                         .Hash(CRC)
                                         .CurrentStatus(status));
-
+            Console.WriteLine("FolderStatus - UpdateServerFileStatus - before SaveStatus");
             SaveStatus();
+            Console.WriteLine("FolderStatus - UpdateServerFileStatus - after SaveStatus");
         }
         public void UpdateLocalFileStatus(string fileName, string CRC, FileStatusType status)
         {
+            Console.WriteLine("FolderStatus - UpdateLocalFileStatus");
             DeleteFileInLocalStatus(fileName);
 
             _folderState.LocalFile(new FolderFileState()
                                         .FileName(fileName)
                                         .Hash(CRC)
                                         .CurrentStatus(status));
-
+            Console.WriteLine("FolderStatus - UpdateLocalFileStatus - before SaveStatus");
             SaveStatus();
+            Console.WriteLine("FolderStatus - UpdateLocalFileStatus - after SaveStatus");
         }
         public void DeleteFileInServerStatus(string fileName)
         {
@@ -113,7 +113,8 @@ namespace FolderSynchronizer.Classes
 
         public void SaveStatus()
         {
-            File.WriteAllText(_folderState.LocalPath() + _folderStateSaveFilePath, _folderState.Definition);
+            _fileManager.SaveFolderState(_folderStateSaveFilePath, _folderState.Definition);
+            //File.WriteAllText(_folderState.LocalPath() + _folderStateSaveFilePath, _folderState.Definition);
         }
 
         public void DeleteFileLocalAndServer(string fileName)
@@ -124,8 +125,10 @@ namespace FolderSynchronizer.Classes
 
         public void NewFileLocalAndServer(string fileName,string CRC)
         {
+            Console.WriteLine("FolderStatus - before NewFileLocalAndServer");
             UpdateLocalFileStatus(fileName, CRC, FileStatusType.Synced);
             UpdateServerFileStatus(fileName, CRC, FileStatusType.Synced);
+            Console.WriteLine("FolderStatus - after NewFileLocalAndServer");
         }
 
         public string GetExpectedServerFileHash(string fileName)

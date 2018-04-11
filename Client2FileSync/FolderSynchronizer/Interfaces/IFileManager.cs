@@ -40,6 +40,8 @@ namespace FolderSynchronizer.Interfaces
 
         IEnumerable<string> GetFilenames();
 
+        void SaveFolderState(string folderStateSaveFilePath, string folderStateDefinition);
+
         byte[] TryToGetContent(string fileName, int tries = 0);
         void TryToSaveFile(string fileName, byte[] fileContent, int tries = 0);
         void TryToDeleteFile(string fileName, int tries = 0);
